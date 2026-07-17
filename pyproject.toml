@@ -1,0 +1,10 @@
+[project]
+name = "cs2-quant"
+version = "0.1.0"
+description = "CS2 skin trading agents on BUFF163 — System A (event-driven) + shared infrastructure"
+requires-python = ">=3.12"
+dependencies = ["pyyaml"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

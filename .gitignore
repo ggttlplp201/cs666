@@ -8,3 +8,12 @@
 
 # Local Claude settings
 .claude/settings.local.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime state (paper wallet, snapshots, provenance logs)
+var/
