@@ -1,0 +1,10 @@
+# Social-monitor account allowlist (System A §7.1) — hot-editable, non-secret.
+# TODO(Leon): supply the real leaker/official accounts (HANDOFF §A).
+# `weight` scales a post's base confidence (1.0 = fully trusted official).
+accounts:
+  - handle: CounterStrike        # official — placeholder entry, confirm list
+    platform: x
+    weight: 1.0
+  - handle: example_leaker       # TODO(Leon): replace with real dataminer/leaker handles
+    platform: x
+    weight: 0.6
