@@ -200,13 +200,20 @@ class MonitorAgent:
         self.known_items = known_items
         self.corroboration_min_sources = corroboration_min_sources
         self._seen_text_hashes: set[str] = set()
-        # key → (classification, set of sources, first_seen_ts, best weight)
-        self._pending: dict[str, tuple[Classification, set[str], float, float]] = {}
+        # key → (classification, per-source confidence contribution, first_seen_ts)
+        self._pending: dict[str, tuple[Classification, dict[str, float], float]] = {}
+        self._future_posts: list[RawPost] = []
 
     def run_cycle(self, now_ts: float) -> list[Signal]:
-        """Poll sources, classify, corroborate, publish. Returns new signals."""
-        for source in self.sources:
-            for post in source.poll():
+        """Poll sources, classify, corroborate, publish. Returns new signals.
+        Posts dated after now_ts are buffered, not ingested — a replay file
+        must not leak future information into earlier cycles."""
+        incoming = self._future_posts + [
+            post for source in self.sources for post in source.poll()
+        ]
+        self._future_posts = [p for p in incoming if p.ts > now_ts]
+        for post in incoming:
+            if post.ts <= now_ts:
                 self._ingest(post)
         return self._emit(now_ts)
 
@@ -221,23 +228,29 @@ class MonitorAgent:
         if result is None:
             return
         key = f"{result.type.value}|{','.join(sorted(result.items))}"
-        weight = self.allowlist[post.source]
+        contribution = result.confidence * self.allowlist[post.source]
         if key in self._pending:
-            existing, sources, first_ts, best_weight = self._pending[key]
-            sources.add(post.source)
-            self._pending[key] = (
-                existing, sources, min(first_ts, post.ts), max(best_weight, weight)
+            existing, contributions, first_ts = self._pending[key]
+            contributions[post.source] = max(
+                contributions.get(post.source, 0.0), contribution
             )
+            self._pending[key] = (existing, contributions, min(first_ts, post.ts))
         else:
-            self._pending[key] = (result, {post.source}, post.ts, weight)
+            self._pending[key] = (result, {post.source: contribution}, post.ts)
 
     def _emit(self, now_ts: float) -> list[Signal]:
+        """Corroboration = noisy-OR over independent sources (§7.3 step 4):
+        one strong official source is enough; a single weak rumor stays low
+        and only clears the act threshold once echoed by more accounts.
+        `corroboration_min_sources` remains the reference count at which a
+        leak-grade contribution (~0.5) saturates past typical act thresholds."""
         emitted = []
-        for classification, sources, first_ts, best_weight in self._pending.values():
-            corroboration = min(
-                1.0, len(sources) / self.corroboration_min_sources
-            )
-            confidence = classification.confidence * best_weight * corroboration
+        for classification, contributions, first_ts in self._pending.values():
+            sources = set(contributions)
+            confidence = 1.0
+            for c in contributions.values():
+                confidence *= 1.0 - c
+            confidence = 1.0 - confidence
             tier = 2 if classification.type == SignalType.OFFICIAL_ANNOUNCEMENT else 1
             signal = Signal(
                 tier=tier,

@@ -144,3 +144,26 @@ def test_provenance_round_trip(tmp_path):
     assert len(records) == 2
     assert records[0]["action"] == "buy_placed"
     assert records[1]["rule"] == "liquidity_floor"
+
+
+class TestLotSplit:
+    def test_split_preserves_basis_and_unlock(self):
+        ledger = Ledger(trade_lock_days=7)
+        lot = ledger.record_buy(_buy_fill(qty=10, price=100.0, ts=0.0))
+        piece = ledger.split_lot(lot.lot_id, 4)
+        remainder = ledger.get(lot.lot_id)
+        assert piece.qty == 4 and remainder.qty == 6
+        assert piece.buy_price == remainder.buy_price == 100.0
+        assert piece.unlock_ts == remainder.unlock_ts == 7 * DAY
+        assert ledger.position_qty("A") == 10
+
+    def test_split_validation(self):
+        ledger = Ledger(trade_lock_days=7)
+        lot = ledger.record_buy(_buy_fill(qty=3, ts=0.0))
+        with pytest.raises(ValueError, match="invalid"):
+            ledger.split_lot(lot.lot_id, 3)
+        with pytest.raises(ValueError, match="invalid"):
+            ledger.split_lot(lot.lot_id, 0)
+        ledger.record_sell(lot.lot_id, _sell_fill(qty=3, ts=8 * DAY))
+        with pytest.raises(ValueError, match="already sold"):
+            ledger.split_lot(lot.lot_id, 1)

@@ -29,6 +29,10 @@ break_detector:
   method: cusum            # or bai_perron on rolling window
   fires_reactive_pipeline: true
   triggers_retrain_alarm: true
+  std_window: 20           # rolling window for return standardization
+  drift_k: 0.5             # CUSUM slack (in std units)
+  threshold_h: 5.0         # CUSUM alarm threshold (in std units)
+  emitted_confidence: 0.75 # confidence of the MARKET_BREAK signal on the bus
 
 # --- Rules table (content supplied by Builder 1; file path here) --------------
 rules_table_path: config/rules_table_a.yaml   # substitute pairs, trade-up/pool effects, etc.

@@ -1,0 +1,43 @@
+# Rules table (System A §4.1 step 2) — the cause→effect item mapping.
+#
+# ⚠ SEEDED FROM THE DOCS ONLY — every entry below is either taken verbatim
+# from docs/System-A_Event-Driven_Reactive.md / RESEARCH_INDEX.md or is a
+# schema placeholder. Leon reviews, corrects, and extends this file
+# (HANDOFF §A: "don't invent the rules table"). Nothing here is invented
+# beyond what the docs state.
+
+# Substitute pairs: a nerf to one side is bullish for the other (Nikolaenko;
+# docs §4.1). TODO(Leon): add the other role-substitute pairs.
+substitute_pairs:
+  - [M4A4, M4A1-S]
+
+# Effect templates per event cause (docs §4.1 bullet list).
+effects:
+  weapon_balance_nerf:
+    self: bearish            # nerfed weapon's skins fall
+    substitute: bullish      # its substitute's skins rise
+  weapon_balance_buff:
+    self: bullish
+    substitute: bearish
+  trade_up_pool_change:
+    input_tiers: bearish     # tiers fed into the contract drop
+    output_tier: bullish     # output tier + adjacent red-tier spike
+  new_case_or_collection:
+    older_discontinued_same_class: bullish   # scarcity narrative
+  armory_re_release:
+    affected_collection: bearish             # supply expectation ↑ → soften
+
+# Weight the table toward second-order items the fast bots miss (§4.1 tail).
+second_order_bias: true
+
+# Entity → tradeable market_hash_names. The two names below are the items the
+# research corpus itself tracks (Nikolaenko's pair) — placeholder universe
+# until Leon supplies the real tracked list per weapon/collection.
+item_map:
+  M4A4:
+    - "M4A4 | Desolate Space (Field-Tested)"
+  M4A1-S:
+    - "M4A1-S | Decimator (Field-Tested)"
+  # TODO(Leon): collections, e.g.
+  # Cache Collection:
+  #   - "Galil AR | Hellhound (Factory New)"

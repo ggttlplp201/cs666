@@ -84,6 +84,26 @@ class Ledger:
         self.conn.commit()
         return self.get(lot_id)
 
+    def split_lot(self, lot_id: int, qty: int) -> Lot:
+        """Split `qty` units off an open lot into a new lot (same cost basis
+        and unlock), enabling scale-out exits into thin books. Returns the
+        new qty-sized lot."""
+        lot = self.get(lot_id)
+        if not lot.is_open:
+            raise ValueError(f"lot {lot_id} already sold")
+        if not 0 < qty < lot.qty:
+            raise ValueError(f"split qty {qty} invalid for lot of {lot.qty}")
+        self.conn.execute(
+            "UPDATE lots SET qty = ? WHERE lot_id = ?", (lot.qty - qty, lot_id)
+        )
+        cur = self.conn.execute(
+            "INSERT INTO lots (market_hash_name, qty, buy_price, buy_ts, unlock_ts)"
+            " VALUES (?,?,?,?,?)",
+            (lot.market_hash_name, qty, lot.buy_price, lot.buy_ts, lot.unlock_ts),
+        )
+        self.conn.commit()
+        return self.get(cur.lastrowid)
+
     def get(self, lot_id: int) -> Lot:
         row = self.conn.execute(
             "SELECT * FROM lots WHERE lot_id = ?", (lot_id,)
