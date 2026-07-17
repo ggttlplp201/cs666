@@ -17,8 +17,8 @@ def _item(name="A", ask=100.0, bid=97.0, volume=30, ts=0.0):
 
 def _buy_fill(name="A", qty=2, price=100.0, ts=0.0):
     return Fill(
-        client_order_id=f"b-{name}-{ts}", side=OrderSide.BUY, market_hash_name=name,
-        qty=qty, price_cny=price, fee_cny=0.0, ts=ts,
+        client_order_id=f"b-{name}-{ts}-{qty}-{price}", side=OrderSide.BUY,
+        market_hash_name=name, qty=qty, price_cny=price, fee_cny=0.0, ts=ts,
     )
 
 
@@ -144,6 +144,16 @@ def test_provenance_round_trip(tmp_path):
     assert len(records) == 2
     assert records[0]["action"] == "buy_placed"
     assert records[1]["rule"] == "liquidity_floor"
+
+
+class TestLedgerIdempotency:
+    def test_replayed_fill_returns_existing_lot(self):
+        ledger = Ledger(trade_lock_days=7)
+        fill = _buy_fill(qty=2, ts=0.0)
+        first = ledger.record_buy(fill)
+        replayed = ledger.record_buy(fill)  # crash-recovery double record
+        assert replayed.lot_id == first.lot_id
+        assert ledger.position_qty("A") == 2  # not 4
 
 
 class TestLotSplit:

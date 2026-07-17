@@ -106,6 +106,16 @@ class RiskGate:
         if qty <= 0:
             return GateResult(0, "volume_size_cap")
 
+        # Regime deployment ceiling (Shared §2 core table): total deployed
+        # capital may not exceed the regime's share of the book.
+        ceiling_pct = self.config.require("regime_ceilings_pct")[regime.value]
+        deployment_headroom = (
+            ceiling_pct * capital_total - self.ledger.deployed_capital()
+        )
+        qty = min(qty, int(deployment_headroom // price))
+        if qty <= 0:
+            return GateResult(0, "deployment_ceiling")
+
         # Locked-capital ceiling (§8.2): T+7 freezes capital; cap the frozen share.
         max_locked = self.config.require("capital.max_locked_pct") * capital_total
         locked_headroom = max_locked - self.ledger.locked_capital(now_ts)

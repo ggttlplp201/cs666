@@ -19,6 +19,7 @@ def classify_regime(
     bull_breadth_min: float,
     bear_breadth_max: float,
     weak_volume_ratio_max: float,
+    bollinger_num_std: float = 2.0,
 ) -> Regime:
     usable = {
         name: hist
@@ -33,7 +34,7 @@ def classify_regime(
     volume_ratios: list[float] = []
     for hist in usable.values():
         prices = [i.buff_lowest_sell_cny for i in hist]
-        if bollinger(prices, breadth_window, 2.0).above_middle:
+        if bollinger(prices, breadth_window, bollinger_num_std).above_middle:
             above += 1
         baseline = hist[-(breadth_window + 1):-1]
         baseline_volume = sum(i.buff_volume_24h for i in baseline) / len(baseline)

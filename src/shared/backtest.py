@@ -9,6 +9,12 @@ to the current snapshot (no look-ahead by construction).
 Includes an event-study runner (§9 "event-study validation"): buy on labeled
 event dates, exit on the first snapshot after unlock, report net-of-fee
 returns per event.
+
+Scope note: strategies run RAW — ctx.buy() models market frictions (fees,
+lock, depth) but does NOT apply System A's risk gate (blocklist, regime
+ceilings, kill switch). That is intentional for measuring market reactions;
+to backtest gated System-A behavior, replay through the full engine
+(system_a.runner --replay), which routes every order through the RiskGate.
 """
 
 from __future__ import annotations
@@ -76,6 +82,7 @@ class BacktestContext:
 
 @dataclass
 class BacktestResult:
+    start_equity: float = 0.0    # wallet before the first cycle, the fixed base
     equity_curve: list[tuple[float, float]] = field(default_factory=list)  # (ts, equity)
     realized_pnl: float = 0.0
     fees_paid: float = 0.0
@@ -88,8 +95,11 @@ class BacktestResult:
 
     @property
     def net_return_pct(self) -> float:
-        start = self.equity_curve[0][1] if self.equity_curve else 0.0
-        return (self.final_equity - start) / start if start else 0.0
+        return (
+            (self.final_equity - self.start_equity) / self.start_equity
+            if self.start_equity
+            else 0.0
+        )
 
 
 Strategy = Callable[[BacktestContext], None]
@@ -115,7 +125,7 @@ class Backtester:
         return f"{prefix}-{next(self._ids)}"
 
     def run(self, strategy: Strategy) -> BacktestResult:
-        result = BacktestResult()
+        result = BacktestResult(start_equity=self.backend.get_wallet())
         ctx = BacktestContext(self)
         for snapshot in self.snapshots:
             market = {i.market_hash_name: i for i in snapshot}

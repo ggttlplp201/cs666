@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS lots (
     unlock_ts REAL NOT NULL,
     sell_price REAL,
     sell_fee REAL,
-    sell_ts REAL
+    sell_ts REAL,
+    buy_order_id TEXT UNIQUE
 );
 """
 
@@ -42,6 +43,7 @@ class Lot:
     sell_price: float | None = None
     sell_fee: float | None = None
     sell_ts: float | None = None
+    buy_order_id: str | None = None   # None for lots created by split_lot
 
     @property
     def is_open(self) -> bool:
@@ -58,11 +60,21 @@ class Ledger:
         self.trade_lock_days = trade_lock_days
 
     def record_buy(self, fill: Fill) -> Lot:
+        """Idempotent on fill.client_order_id (§6): replaying the same fill —
+        e.g. crash-recovery reconciliation — returns the existing lot instead
+        of double-counting inventory."""
+        existing = self.conn.execute(
+            "SELECT lot_id FROM lots WHERE buy_order_id = ?",
+            (fill.client_order_id,),
+        ).fetchone()
+        if existing:
+            return self.get(existing[0])
         unlock_ts = fill.ts + self.trade_lock_days * DAY
         cur = self.conn.execute(
-            "INSERT INTO lots (market_hash_name, qty, buy_price, buy_ts, unlock_ts)"
-            " VALUES (?,?,?,?,?)",
-            (fill.market_hash_name, fill.qty, fill.price_cny, fill.ts, unlock_ts),
+            "INSERT INTO lots (market_hash_name, qty, buy_price, buy_ts, unlock_ts,"
+            " buy_order_id) VALUES (?,?,?,?,?,?)",
+            (fill.market_hash_name, fill.qty, fill.price_cny, fill.ts, unlock_ts,
+             fill.client_order_id),
         )
         self.conn.commit()
         return self.get(cur.lastrowid)

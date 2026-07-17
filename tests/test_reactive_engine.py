@@ -202,8 +202,9 @@ class TestEngine:
 
     def _seed_lot(self, h, name, buy_price, qty, buy_ts):
         fill = Fill(
-            client_order_id="seed", side=OrderSide.BUY, market_hash_name=name,
-            qty=qty, price_cny=buy_price, fee_cny=0.0, ts=buy_ts,
+            client_order_id=f"seed-{name}-{buy_ts}-{qty}", side=OrderSide.BUY,
+            market_hash_name=name, qty=qty, price_cny=buy_price, fee_cny=0.0,
+            ts=buy_ts,
         )
         h.ledger.record_buy(fill)
         h.backend.inventory[name] = h.backend.inventory.get(name, 0) + qty
@@ -290,3 +291,18 @@ class TestMonitorTimeGate:
         )
         assert agent.run_cycle(now_ts=500.0) == []      # post is in the future
         assert len(agent.run_cycle(now_ts=1500.0)) == 1  # ingested once due
+
+
+class TestDeploymentCeiling:
+    def test_regime_ceiling_caps_total_deployment(self, tmp_path):
+        h = Harness(tmp_path)
+        # sideways ceiling = 0.50 * 100k = 50k; already deployed 45k
+        TestEngine._seed_lot(TestEngine(), h, M4A1S, 900.0, 50, T0 - DAY)
+        item = _item(M4A4, 1000.0, volume=200)
+        result = h.gate.check_buy(
+            item, Regime.SIDEWAYS, _leak(), 50, 1e5, T0,
+        )
+        assert result.approved and result.qty == 5  # 5k headroom / 1000
+        TestEngine._seed_lot(TestEngine(), h, M4A4, 1000.0, 5, T0 - DAY)
+        refused = h.gate.check_buy(item, Regime.SIDEWAYS, _leak(), 50, 1e5, T0)
+        assert refused.rule == "deployment_ceiling"

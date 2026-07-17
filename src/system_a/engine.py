@@ -158,6 +158,7 @@ class ReactiveEngine:
             bull_breadth_min=r["bull_breadth_min"],
             bear_breadth_max=r["bear_breadth_max"],
             weak_volume_ratio_max=r["weak_volume_ratio_max"],
+            bollinger_num_std=self.config.require("indicators")["bollinger_num_std"],
         )
 
     def _run_break_detector(self, snapshot: dict[str, Item]) -> None:
