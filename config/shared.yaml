@@ -64,6 +64,22 @@ risk_controls:
   weekly_loss_limit_pct: -0.10
   revenue_cooldown_after_stop_days: 3  # no revenge-trading same item
 
+# --- Indicator parameters (Shared §3) — added by Builder 1, starting defaults --
+indicators:
+  bollinger_window: 20
+  bollinger_num_std: 2.0
+  volume_baseline_window: 14      # snapshots used for the volume baseline
+  flat_price_pct: 0.01            # |change| below this counts as "flat"
+  volume_high_ratio: 1.5          # volume ≥ ratio×baseline counts as "volume up"
+  volume_low_ratio: 0.7           # volume ≤ ratio×baseline counts as "volume down"
+
+# --- Market-regime classifier (Shared §2) — added by Builder 1 -----------------
+regime:
+  breadth_window: 20              # snapshots for middle-band/MA breadth
+  bull_breadth_min: 0.60          # share of primaries above middle band
+  bear_breadth_max: 0.35
+  weak_volume_ratio_max: 0.50     # aggregate volume vs baseline ⇒ weak/low-liquidity
+
 # --- Data sources (keys in .env; names here) ----------------------------------
 data:
   live_feed: cs2.sh                    # BUFF volume/buy-orders/float; CS2SH_API_KEY in .env
