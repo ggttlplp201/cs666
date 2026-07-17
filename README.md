@@ -66,6 +66,26 @@ cs2-quant/
 
 ---
 
+## Implementation status (Builder 1: shared + System A)
+
+`src/shared/` and `src/system_a/` are implemented and tested (paper mode only).
+Live data/execution stay disabled until the placeholder keys in `.env` are
+replaced — see HANDOFF §0/§A for what's still human-supplied (rules-table
+content, account allowlist, API keys).
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install pyyaml pytest
+.venv/bin/pytest                                        # test suite
+PYTHONPATH=src .venv/bin/python -m system_a.runner --demo   # end-to-end paper demo
+```
+
+The demo synthesizes an M4A1-S nerf: monitor classifies the posts → signal
+bus → rules table maps the substitute (M4A4) → right-side confirmation →
+risk gate → paper buy → T+7 hold → take-profit exit, all provenance-logged
+to `var/provenance_a.jsonl`.
+
+---
+
 ## Regenerating the PDFs
 
 The `.md` files are canonical; the PDFs in `docs/pdf/` are snapshots. After editing a doc, regenerate its PDF (e.g. `markdown` → HTML → `wkhtmltopdf`, or `pandoc`). Never edit the PDF directly.
