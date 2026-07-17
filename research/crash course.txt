@@ -1,0 +1,442 @@
+﻿Chinese Term
+	English Translation
+	Explanation
+	左侧 / 右侧
+	Left-side (buying dip) / Right-side (chasing momentum)
+	Left = buy as price falls; Right = buy as price rises
+	下轨 / 中轨 / 上轨
+	Lower / Middle / Upper Bollinger Bands
+	Standard technical bands
+	出红柱 / 出绿柱
+	Red / Green volume bar appears
+	Red = bearish/selling pressure; Green = bullish/buying pressure
+	存世量
+	Circulating supply
+	Total number of that skin in existence
+	有效求购
+	Valid buy orders
+	Buy orders close to market price (not lowballs)
+	CD
+	Cooldown period
+	7-day trade lock on CS2 items
+	层 / 仓
+	Position size / Layers
+	e.g., "5层仓" = 50% of allocated capital deployed
+	千百战
+	Mid-tier primary weapons
+	Skins in the 1000-3000 yuan range (M4/AK/A1)
+	小件
+	Small/low-value items
+	Skins in the 50-500 yuan range
+	大件
+	High-value / Large items
+	Expensive gloves, knives, collection skins
+	庄 / 盘主
+	Market maker / Main force / Whale
+	Big players manipulating price
+	一波流
+	One-wave pump-and-dump
+	Sharp spike then immediate crash
+	筹码图 / 密集区
+	Volume Profile / Cost distribution / Dense zone
+	Chart showing holders' cost basis
+	套牢盘
+	Trapped holders / Bagholders
+	People who bought high and will sell on any bounce
+	正T / 负T / 做T
+	Swing trading within a position
+	Positive T = buy low, sell high; Negative T = sell high, buy low
+	接盘
+	Being exit liquidity
+	Buying when whales are selling to you
+	割肉 / 止损
+	Cut loss / Stop loss
+	Selling at a loss to preserve capital
+	梭哈
+	All-in
+	100% capital into one item
+	________________
+
+
+1. Bollinger Bands – Practical Application
+What They Are
+Three bands: Upper (Resistance), Middle (Strength/Trend), Lower (Support).
+Middle Band – The Core
+* Price above middle band → Strong – can hold. First touch often bounces.
+* Price below middle band → Weak – do not touch, do not bottom-fish. Usually in a slow downtrend.
+* Logic: The middle band is the "waist." Standing above it means strength to rise; falling below means weak oscillation.
+Upper Band – Resistance (Sell Signal)
+* Price hits upper band + Green volume bar appears → Standard sell signal. Reduce position, take profit.
+* Price sticks to upper band, NO green bar → Hold. Do not sell.
+* Logic: True strong items ride along the upper band sideways, not spike violently. If a green bar appears on the spike, capital is running – follow them out.
+Lower Band – Support (Buy Signal)
+* Price hits lower band + Red volume bar appears + Price stops falling → Usually a buy signal. Place low resting buy orders.
+* Price hits lower band only, NO red bar, price keeps falling → No signal. Can continue dropping.
+* Rule: Do not buy until it has fully plunged and stabilised.
+How to Play a Sideways/Range-Bound Market
+* Hits upper band + green bar → pulls back to middle → Sell.
+* Hits lower band + red bar → returns to middle → Buy.
+* Rule: Do not chase highs or panic. Trade the oscillations – this gives the most stable profits.
+Band Opening Determines Speed
+* Bands widening → Trend accelerating (faster up or down).
+* Bands narrowing → Entering oscillation; slower, steady rhythm.
+* Rule: Once bands widen, do not trade against the trend. Either hold firmly or exit decisively.
+________________
+
+
+2. Volume Profile (Cost Distribution / 筹码图)
+What It Is
+A chart showing the cost basis of all current holders. Taller bars = more people bought at that price = Cost Concentration Zone.
+3-Step Reading for Beginners
+1. Find the Dense Zone (Main Peak) – Look at the tallest bars. The narrower this zone, the better (clearer support/resistance). Wide = messy – beginners avoid.
+2. Determine Support and Resistance
+   * Price above the dense zone → That zone becomes Support. It will likely bounce there (holders defending their cost).
+   * Price below the dense zone → That zone becomes Resistance. Hard to break through (trapped holders will sell). Sell near it.
+3. Read the Moving Direction
+   * Dense zone slowly moving up → Main force accumulating/pushing higher – good. Follow with small positions.
+   * Dense zone slowly moving down → Main force distributing/selling – bearish. Avoid buying.
+   * No clear direction → Chaotic. Beginners stay away.
+4 Classic Shapes
+* Low-level Single Peak – Accumulation complete. Signal for potential uptrend. Hold if price stays above the peak.
+* High-level Single Peak – Profit-taking done; many retail bought at top. High risk! If price breaks below the peak, run immediately.
+* Double Peak (support below, resistance above) – Range-bound. Trade between them. If volume breaks above the upper peak, new upside opens.
+* Dispersed/Scattered Peaks – No concentration. Illiquid or crashing assets. Beginner Forbidden Zone.
+Important Reminder
+Never look at Volume Profile alone. Combine with supply, case price, etc. It shows trend, not precise bottom. Still use position sizing and wait for signals.
+________________
+
+
+3. Left-Side vs Right-Side Trading
+Left-Side (Buying the Dip)
+* Enter in stages because exact bottom is unknown.
+* Example: Plan to buy 3 pieces. Buy 1 at first drop, another if it drops further, keep 1 to observe. Always wait for CD (cooldown) before adding more.
+* If it rises later, you break even; if it drops more, you have dry powder to add.
+* Requires good information access and selection understanding.
+Right-Side (Chasing Momentum)
+* Buy when a clear breakout or uptrend is confirmed.
+* Works when the main force's signal is obvious and you can complete the trade within one CD.
+* Easier but riskier – only when the trend is obvious.
+________________
+
+
+4. Position Sizing & Money Management
+Golden Rule (Memorise This)
+"Stickers & pins: never full position. In a range: keep 5 layers (50%). Chasing momentum: never exceed 2 layers (20%). Never easily push to high position."
+* Divide capital into 10 parts – each = 1 layer (10%).
+* Usually keep 50% (5 layers) deployed. Leaves 50% for averaging down or buying sudden dips.
+* Bear market: 30% (3 layers), only short swings.
+* Strong bull market: 70-80% (7-8 layers).
+* Single sub-category (e.g., mid-tier) should not exceed 60% (6 layers) of its allocated budget.
+* Core Logic: This market rewards longevity, not one big win. A single game update can wipe out the reckless.
+Example Allocation (100,000 yuan budget)
+* Mid-tier collection items: 30,000
+* Mid-tier primary weapons (1000-3000 range): 20,000
+* Materials: 10,000
+* Gloves: 20,000
+* Reserved for emergency dips: 20,000
+Rule: Within each category, do not exceed 60% (6 layers).
+________________
+
+
+5. Item Selection Criteria
+Step 1 – Choose a Direction
+* Priority: M4A4 primary rifles (highest liquidity, easiest to recover). Adjust based on current market strength.
+* Exclude items with circulating supply > 50,000.
+Step 2 – Select the Item (3 Mandatory Conditions)
+1. Supply: 10,000 – 30,000 in circulation.
+2. Case Price: ≥ 80 yuan (expensive case = high opening cost = supply won't increase easily).
+3. Valid Buy Orders: At least 3 valid buy orders (e.g., price 1000, buy orders at 980-950 with 4+ quantity).
+   * All 3 conditions are mandatory!
+Upper/Lower Tier Relationships
+* If the top-tier Gold item has a market maker, its lower-tier Red skins usually follow.
+* Do not blindly sweep the entire tier – watch for manipulation.
+Watch K-Line, Listings, and Buy Orders
+* Listings decreasing + volume rising = Good.
+* Listings increasing + volume falling = Bad.
+* Valid buy orders = close to market price. Invalid = far below. To buy, place between the valid and invalid zones.
+Priority Order Among Categories
+1st-generation high-end gloves > 1st-generation glove materials > Knife "three gods" materials ≥ Mid-tier primary weapons (1000-3000) and 2nd/3rd-gen gloves.
+Weapon priority: M4A4 > AK-47 ≈ M4A1-S ≈ Glock > others.
+________________
+
+
+6. Volume-Price Relationships & Market Signals
+1. Listings increase + Price drops + Volume is high – Main force or members are exiting (clearing positions). Could also be a shakeout to trap retail (rare, costly).
+2. Price drops + Volume is low – Main force creating panic to shake out weak hands, then re-accumulate.
+3. Volume & Price rise together (Healthiest) – Real accumulation; main force steadily pushing up.
+4. Price rises + Volume shrinks (Weak rally) – Sell immediately. Beware of "one-wave pump-and-dump" manipulators (e.g., Pu Dao, Pzk, small teachers). Never enter during their pump.
+5. Sideways/Flat – Possible entry if you have conviction and information. Otherwise, wait for the first move to confirm direction; otherwise it might turn into a downtrend.
+________________
+
+
+7. Building Positions, Adding, Taking Profit, and Stop Loss
+Step-by-Step Example (5000 yuan budget for one item)
+* Price 600, buy 2 first.
+* Drops to 560, buy 2 more.
+* Drops to 540, buy 2 more.
+* Wait for CD. If it stays at 540 after CD, buy 2 more → total ~70-80% deployed.
+* Rises to 550 → sell the 540 batch (profit 20 each).
+* Rises to 570 → sell the 560 batch (profit 40 each).
+Adding (Averaging Down)
+* Only add when price hits support (e.g., -10% from your first buy).
+* Do NOT add before the CD of your first batch is finished.
+* Do not exceed 6 layers (60%) for a single item.
+Taking Profit
+* Take profit at 10%-15% gains.
+* At resistance levels, sell partial.
+* Rule: Consistent 10-15% gains are better than greed.
+Stop Loss (Bear Market Survival)
+* -10%: Cut immediately. No hoping for a bounce.
+* -15% to -20%: Unconditional liquidation.
+* NEVER average down in a bear market. The bottom is unknowable.
+Positive T / Negative T (Swing Trading within Position)
+* Positive T = Buy low first, then sell high (standard).
+* Negative T = Sell high using existing holdings first, then buy back lower.
+________________
+
+
+8. Market Context: Small vs. Large Items
+Weak Market / Low Liquidity
+* Large items (gloves, high-tier knives) are a minefield. They need massive capital to move; too many trapped holders (bagholders). Any small bounce gets sold off.
+* Small items (50-500 yuan) are a safe haven. Low listings (≤150), low entry price, low risk, don't require big capital to move.
+Small-Item Selection Criteria (Weak Market Strategy)
+* Price range: 50-500 yuan.
+* Long sideways – fluctuation < 10% over 10 days (no hype).
+* Listings ≤ 150, with real transaction volume in the last 7 days.
+* Spread buying across 5-10 items; never heavy on one.
+* Rule: In a weak market, not losing money is winning. Place low resting buy orders and wait.
+Rotation Logic (Small → Mid-Tier)
+After small items have run up, money will rotate to mid-tier items (1000-3000 yuan) that have real fundamentals and enough depth to absorb bigger capital.
+* Focus on mid-tier items with low listings, not yet overhyped, still at reasonable prices.
+* Do NOT chase the late-stage small-item hype. Instead, place low resting buy orders on mid-tier candidates and wait for the capital rotation.
+* Warning: Avoid "small teachers" pumping items on social media – they are usually setting up retail to be exit liquidity.
+________________
+
+
+9. Specific Item Buy-Level Recommendations (From Image E8022F68)
+From Pick (2025.12.5):
+If a "man-made doomsday" occurs (large whales sucking liquidity out), mid-tier items may have another 15% downside. Those with limited capital should wait. For those already holding, do not panic.
+Strategy:
+* Large capital – batch-buy in 3 tiers. Compare to your entry and add at approximately 5% lower intervals.
+* Small capital – only add on sharp dips. Use the approximate bottoms below.
+* If you are still in profit or at breakeven on non-mid-tier items, sell them first (do a negative-T / short swing) and wait for lower prices to re-enter.
+Specific recommended items & tiered buy levels (Entry → 1st Add → 2nd Add):
+Item
+	Condition
+	Entry Price
+	1st Add
+	2nd Add
+	Mechanical Industry
+	Minimal Wear
+	1750
+	1550
+	1100
+	Female Vulcan
+	Minimal Wear
+	1450
+	1050
+	800
+	Flower of Life (彼岸花)
+	Factory New
+	1100
+	850
+	650
+	Other mid-tier items worth operating later: Neon Revolution, Lively Color (活色生香), Blackberry.
+Collection items to watch: Gamma Glock, Desert Fox, Fire Serpent (Hot Rod style), Icarus Fell, Emerald.
+________________
+
+
+10. How to Recognise Bull / Bear / Sideways Markets
+Bull Market (Rising Prices)
+* Most primary weapons rise steadily daily. Pullbacks are small and quickly recover.
+* Buy orders are plentiful; listings are few; orders fill quickly.
+* Hot items gain hundreds per day. Both bids and asks are strong.
+* Core: prices only go up; more buyers appear as prices rise; even obscure items follow.
+Bear Market (Falling Prices)
+* Most primary weapons drift down slowly. Sudden drops may occur.
+* Occasional bounces are short-lived; next day decline resumes.
+* Listings are many; buy orders are thin; bids keep moving lower.
+* Core: prices only go down; even good items cannot escape. Entering here is catching a falling knife.
+Sideways / Range-Bound
+* Prices oscillate: up a bit, down a bit.
+* Best period for beginners to practice and earn steady small profits using range-trading techniques.
+________________
+
+
+11. First Trade Guide for Pure Beginners (Capital ≤ 3000 yuan)
+3 Iron Rules
+1. Only use idle funds – no borrowing.
+2. Only trade primary weapons (M4A4, AK-47, M4A1-S, Glock). No gloves, no high-tier golds, no obscure stickers.
+3. Never chase, never full position. Start with 3-5 layers (30-50%).
+Step-by-Step
+* Check supply (1-30k), case price (≥80), valid buy orders (≥3).
+* Allocate 3-5 layers of your budget to one item.
+* Place buy order within the valid buy-order zone (e.g., 950 for a 1000 yuan item).
+* Buy it, then close the app. Check price once a day. Do not obsess.
+* Wait for CD to finish before any further action.
+________________
+
+
+12. Top 10 Beginner Pitfalls (Full List)
+1. Following screenshots in comments – They are often at a peak; you become exit liquidity. Always check supply, volume, and profile first.
+2. Believing "100% guaranteed profit" tips – Always traps to offload bags.
+3. Trading repeatedly within one CD – Buying again before the first batch unlocks, then unable to sell when it drops.
+4. Going all-in on one item – One wrong move wipes you out. Stick to 50% max.
+5. Placing buy orders too low – You never get filled. Place within the valid buy-order zone.
+6. Ignoring fees – Fees are ~3-5%. Always deduct them from your profit calculation.
+7. Buying cold/obscure items – You can't resell. Beginners must only trade primary weapons.
+8. Selling too early / holding losers too long – Set 10-15% take-profit and -10% stop-loss. Execute strictly.
+9. Obsessing over price every minute – Check once a day. Emotional trading leads to bad decisions.
+10. Trying to get revenge after a loss – Stop for 1-2 days, review, then trade again.
+Beginner's Total Avoidance Rhyme
+Don't follow hype, don't go all-in, don't greed for lows, don't rush.
+Wait for CD to finish before adding; stop-loss and take-profit always in mind.
+________________
+
+
+13. The Trading Journal – How to Review
+Why Journal?
+* Prevents repeated mistakes – write down why you lost.
+* Solidifies winning logic – replicate what worked.
+* Speeds up learning – 10 tracked trades > 30 untracked trades.
+* Stabilises mindset – seeing overall positive results reduces fear.
+* Simple truth: No review = wasted trades. No record = wasted experience.
+What to Record for Every Trade
+* Date (Entry / Exit)
+* Item name and capital allocated
+* Position size (% of total)
+* Buy price (including fees)
+* Sell price (including fees)
+* Net Profit / Loss
+* 3 core reasons for choosing this item
+* What you did right
+* What you did wrong
+* Specific improvement actions
+Example Journal Entry
+* Item: M4A1-S Nitro (Factory New). Budget: 5000 yuan.
+* Buy: 1000 yuan. Sell: 1500 yuan. Profit: 1500 yuan (~50%).
+* Selection basis: Early entry due to "five-in-one" butterfly knife connection; valid buy orders strong.
+* Lesson learned: Ignored supply limit (50k+), which capped future upside. Next time, pay more attention to supply and knife-item correlations.
+Optimisation Through Journaling
+* Record things like: "more extreme wear patterns can sell at a premium if the buyer doesn't notice," or "items with more valid buy orders fall less." Adjust your strategy accordingly.
+* CS market changes with V社 updates and tournaments – journaling helps you adapt quickly.
+Key Management Rule
+* Do not overtrade: 1-2 trades per month. Do not touch the next item before the previous CD is finished.
+* Remember three times: Market longevity makes you money. Market longevity makes you money. Market longevity makes you money.
+________________
+
+
+Final Summary of Core Principles
+Market Phase
+	Position Size
+	Action
+	Bull
+	70-80%
+	Hold strong items, scale up gradually.
+	Bear
+	≤30%
+	Avoid buying, cut losses immediately, never average down.
+	Sideways
+	50%
+	Trade support/resistance, take steady 10-15% profits.
+	Weak / Low liquidity
+	Small items only
+	Spread across 5-10 low-value items; avoid large items.
+	Always remember:
+* Survive longer, not win bigger.
+* No borrowing – use only idle funds.
+* Wait for signals (red bar + stop falling / green bar + resistance).
+* Combine Bollinger Bands, Volume Profile, volume-price, and supply data – never rely on a single indicator.
+* Review every trade. Learn from every loss.
+Chapter 14 – Trading Maxims (Daily Review)
+Keep these proverbs in mind and review them every day:
+Trend & Price Action Maxims:
+* Continuous small rises are real rises; continuous large rises – exit quickly.
+* Before a big drop, there is always a frenzy; before a big rise, a pit is always dug (shakeout).
+* A sharp drop with no volume is intimidation; a slow drop with increasing volume – retreat immediately.
+* On a big spike upward, sell heavily; without a deep pit dug, do not buy heavily.
+* Buy the sideways, buy the pit, do not buy the vertical spike; the selling point is at the peak of public euphoria.
+* When the daily K-line and weekly K-line start rising from the bottom, it is certainly the main force washing out weak hands.
+11 Daily Self-Reminders (Execute without hesitation):
+1. Take profit when you see the chance.
+2. Run as soon as there is profit to secure.
+3. Be ruthless when cutting and exiting.
+4. Never fantasise about "it will come back."
+5. Cash is king – hold dry powder.
+6. Do not sell on a sharp crash (wait for the bounce, but don't buy either).
+7. Sell on a slow, steady decline (momentum is fading).
+8. Do not sell on a slow, steady rise (trend is healthy).
+9. Sell on a big, explosive rise (exhaustion).
+10. Always secure your gains – money in hand is real.
+11. Never chase a rally that has already taken off.
+________________
+
+
+Chapter 15 – How to Select Items in the CS Market (Case Study)
+When selecting an item, you must evaluate 5 core factors:
+1. Production / Source (产出)
+2. Circulating Supply (存世量)
+3. Liquidity / Daily Trading Volume (流通量)
+4. Whether it is a Primary Weapon (主战与否)
+5. Appearance / Skin Quality (颜值)
+Case Study: Cache Collection – "Hellhound" (Factory New)
+① Production / Source
+Like the first-generation collection skins of old maps, Cache is now a discontinued map collection. It will only return to the pool if Valve releases the new CS2 Cache map. However, Valve will likely introduce the new Cache collection through the "Arsenal" system (similar to weekly drops). Under this backdrop, the supply is effectively capped, which already satisfies the production requirement for selection.
+② Circulating Supply
+An appropriate circulating supply determines the price ceiling, while capital injection determines how high it actually goes. Supply is NOT always better when lower – if it is too low, liquidity suffers (e.g., the "Cool Graffiti Leather" AK – too illiquid).
+For a "noteworthy" skin, Factory New supply in the range of 2,000 – 10,000 is the sweet spot where institutional capital is most likely to choose it. Hellhound sits at 7,000+ , perfectly matching this range. Most established collection skins fall right into this bracket.
+③ Liquidity / Daily Trading Volume
+As mentioned above, liquidity is affected by supply, but also by price, player recognition, and market acceptance. At least 10 genuine transactions per day is the minimum requirement for a skin to be considered liquid. Before Hellhound was selected, its daily transaction volume consistently hovered around 20–40 trades per day.
+④ Whether it is a Primary Weapon
+* Primary weapons = the most commonly bought guns in MR12 matches: AK-47, M4A1-S, M4A4, USP-S, Glock, AWP, etc.
+* The Galil is used mainly in force-buy rounds on the Terrorist side, so relative to the AK, it does not qualify as a true primary.
+* However, after this year's "mid-tier primary weapon" rally frenzy, traditional primary-weapon selections in that price range have become saturated. Therefore, we must now look to secondary primary weapons as the next tier for selection.
+⑤ Appearance / Skin Quality
+Hellhound ranks in the mid-to-upper tier within the Galil category. Its art style resembles classic older skins (reminiscent of the M4A4 Howl, AWP Boom, or M4A1-S Poseidon).
+________________
+
+
+Chapter 16 – Advanced Selection Awareness: How to Spot Whales Accumulating
+"Why do you buy and immediately get trapped, but the moment you sell, the price explodes upwards? Why are you never firm enough? Why do you always retreat at the worst time?"
+Today, I will teach you how to identify when the market maker (whale) is secretly accumulating, so you can position yourself early. Read this summary carefully!
+The Problem
+Are you constantly browsing the market and suddenly spotting a great item, only to click on its chart and realise it is already at a high price? This market is not a game – whoever sees it first doesn't automatically win. You need to position yourself in advance. The whales want to cut you, but with the right knowledge, the market can even let you ride their wave.
+Here are 3 proven signals that whales are accumulating before the big pump:
+________________
+
+
+Signal 1 – Sideways with Shrinking Volume (横盘缩量)
+* The item can no longer drop – selling pressure is exhausted.
+* Everyone who wanted to sell has already sold; those who are holding refuse to sell regardless of price.
+* The price is moving sideways, but the circulating supply is slowly decreasing (people are quietly taking items off the market).
+* The "float" becomes very light – for the whale, there is little resistance to push the price up.
+________________
+
+
+Signal 2 – Volume Increases but Price Does Not Rise (放量不涨)
+* In plain terms: transaction volume suddenly spikes, but the price barely moves.
+* CRITICAL DISTINCTION:
+   * Volume (成交额/交易量) = number of BUY transactions. Higher volume means more buyers, which SHOULD push price up.
+   * Listings (在售量) = number of SELL orders. Higher listings means more sellers, which pushes price down.
+* When volume spikes (sometimes several times the normal average), but price stays flat – what is happening?
+   * The whale is aggressively buying up all the sell orders, but they are carefully pacing it so the price does not shoot up. They are absorbing supply without alerting the market.
+________________
+
+
+Signal 3 – Against-the-Trend Resilience / Refusing to Drop (逆势抗跌)
+* In plain terms: Even with negative news, it refuses to fall. Even when it "should" fall, it stays strong – therefore, it should be viewed as bullish.
+* For example: The entire market is crashing, OR a specific negative rumour about this skin emerges. Logically, it should drop. But instead, it is abnormally resilient and simply will not go down.
+* What does this mean?
+   * There is massive buy-support underneath, absorbing every single sell order.
+   * Who has such strong financial power and such a strong incentive to defend the price? The whale / market maker.
+   * Think about it: they are running this play. They hold the most inventory. If the price drops, they lose the most money. So they have no choice but to hold the line and absorb all selling pressure.
+________________
+
+
+Simple Summary – How to Pick Good Items
+remember these 3 signals:
+1. Sideways with shrinking volume.
+2. Volume increases but price does not rise.
+3. Resilient against the trend (refuses to drop).
+When you spot a skin showing multiple signals simultaneously, immediately add it to your high-priority watchlist.
+This is not a 100% guarantee, but it will greatly increase your win rate.

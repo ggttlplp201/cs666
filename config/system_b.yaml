@@ -1,0 +1,51 @@
+# config/system_b.yaml — Positional Value / Trend (Builder 2)
+# Inherits config/shared.yaml. Starting defaults; tune via walk-forward backtest.
+
+style: left_side           # staged dip-buying; adds only at support, CD-gated
+
+# --- Model (per Pettersson: trees beat LSTM) ---------------------------------
+model:
+  type: xgboost            # or random_forest; keep linear as interpretable baseline
+  target: forward_log_return
+  horizon_days: 21         # N-day forward return (14–30 typical)
+  cross_sectional: true    # rank many items each cycle, not per-item time series
+  validation: walk_forward # NEVER random splits
+  # RF/XGB hyperparams tuned by Claude Code; expectation: ~0.5 R² ceiling on daily
+
+# --- Factor weights (composite score; tune, don't hand-fix on folklore) ------
+factor_weights:
+  supply_outlook: 0.20
+  existing_quantity: 0.15
+  circulation: 0.15
+  meta_status: 0.20
+  aesthetics: 0.15        # aesthetics scores are human-supplied by Builder 2 (see HANDOFF §B)
+  ma_deviation_momentum: 0.15   # empirically the single strongest predictor (Pettersson)
+
+# --- Priority tilts (Shared §4.4) --------------------------------------------
+priority:
+  weapons: [M4A4, AK-47, M4A1-S, Glock-18, AWP, USP-S]   # M4A4 highest liquidity
+  tilt_to_secondary_primaries: true   # traditional mid-tier meta is saturated
+
+# --- Entry rule --------------------------------------------------------------
+entry:
+  min_accumulation_signals: 2   # of {sideways+shrinking float, volume-no-price, resilient}
+  require_pass_hard_filters: true
+  attention_feature_from_bus: true   # Tier 3 rising-but-early attention as leading feature
+  reject_late_parabolic_attention: true
+
+# --- Staged build (Shared §6.2) ----------------------------------------------
+staged_entry:
+  add_only_at_support_pct: -0.10   # ~-10% from first buy
+  add_only_after_prior_batch_cd: true
+  batches_per_item: 4
+
+# --- Event risk overlay (consumes shared bus, Tier 2) ------------------------
+event_overlay:
+  tiers_consumed: [2, 3]
+  on_confirmed_event_affecting_holding: pause_buys_and_flag_thesis_review
+  chase_events: false          # that's System A's job
+
+# --- Item universe (supplied by Builder 2) -----------------------------------
+universe:
+  scope: filtered              # "full" catalogue | "filtered" scoring set
+  universe_path: config/universe_b.yaml
