@@ -140,20 +140,38 @@ class RuleScore:
         return f"directional only ({self.hits}/{self.scoreable} hits)"
 
 
-def _price_on(series: list[Item], ts: float, tolerance_days: float = 3.0) -> float | None:
-    best, best_gap = None, tolerance_days * DAY
+def _price_at_or_before(series: list[Item], ts: float) -> float | None:
+    """Last price known at decision time — for pre-event context only."""
+    best = None
     for item in series:
-        gap = abs(item.ts - ts)
-        if gap <= best_gap:
-            best, best_gap = item.buff_lowest_sell_cny, gap
+        if item.ts <= ts:
+            best = item.buff_lowest_sell_cny
+        else:
+            break
     return best
 
 
-def _price_after(series: list[Item], ts: float) -> float | None:
+def _price_after(
+    series: list[Item], ts: float, max_delay_days: float | None = None
+) -> float | None:
+    """Next-bar execution: the first price at/after ts. Never a past bar —
+    that would be a fill at a price no longer available (look-ahead)."""
     for item in series:
         if item.ts >= ts:
+            if max_delay_days is not None and item.ts - ts > max_delay_days * DAY:
+                return None
             return item.buff_lowest_sell_cny
     return None
+
+
+def fee_for_ts(ts: float, current_fee_pct: float, fee_history: list[dict]) -> float:
+    """Resolve the seller fee in force at ts from the dated schedule
+    (costs.fee_history): entries are {until: 'YYYY-MM-DD' (exclusive),
+    fee_pct}. Historical events must pay the fee of their era."""
+    for entry in sorted(fee_history, key=lambda e: str(e["until"])):
+        if ts < _event_ts(str(entry["until"])):
+            return float(entry["fee_pct"])
+    return current_fee_pct
 
 
 def run_event_study(
@@ -163,6 +181,7 @@ def run_event_study(
     fee_pct: float,
     lock_days: float,
     source: str = "steam",
+    fee_history: list[dict] | None = None,
 ) -> tuple[list[PredictionOutcome], dict[str, RuleScore], list[str]]:
     outcomes: list[PredictionOutcome] = []
     scores: dict[str, RuleScore] = {}
@@ -177,10 +196,21 @@ def run_event_study(
             )
             continue
         ts = _event_ts(event["date"])
-        for signal in signals_for_event(rules, event):
+        signals = signals_for_event(rules, event)
+        if not signals:
+            # Never skip an event silently — a labeled event the pipeline
+            # can't synthesize is itself a finding.
+            notes.append(
+                f"{event['date']}: event type {event['type']} produced no "
+                "signals — unhandled type or unparseable change text; "
+                "needs mapping data (e.g. trade_up_lock_expiry item lists)."
+            )
+            continue
+        for signal in signals:
             if signal.event_rule == "trade_up_pool_change":
                 prices = {
-                    n: (_price_on(series_cache[n], ts) or 0.0) for n in universe
+                    n: (_price_at_or_before(series_cache[n], ts) or 0.0)
+                    for n in universe
                 }
                 candidates = rules.map_trade_up_signal(signal, universe, prices, [])
                 if not candidates:
@@ -194,12 +224,15 @@ def run_event_study(
                     )
             else:
                 candidates = rules.map_signal(signal, universe)
+            event_fee = fee_for_ts(
+                ts + lock_days * DAY, fee_pct, fee_history or []
+            )
             for candidate in candidates:
                 score = scores.setdefault(candidate.rule, RuleScore(candidate.rule))
                 score.predictions += 1
                 outcome = PredictionOutcome(str(event["date"]), candidate)
                 series = series_cache.get(candidate.market_hash_name, [])
-                entry = _price_on(series, ts)
+                entry = _price_after(series, ts, max_delay_days=3.0)
                 exit_price = _price_after(series, ts + lock_days * DAY)
                 if entry is None or exit_price is None:
                     score.data_gaps += 1
@@ -214,7 +247,7 @@ def run_event_study(
                 score.scoreable += 1
                 score.hits += int(outcome.direction_hit)
                 if candidate.tradeable and candidate.direction == Direction.BULLISH:
-                    net = (exit_price * (1 - fee_pct) - entry) / entry
+                    net = (exit_price * (1 - event_fee) - entry) / entry
                     outcome.net_pnl_pct = net
                     score.trades += 1
                     score.net_pnl_pct_sum += net
@@ -223,17 +256,25 @@ def run_event_study(
 
 
 def primary_validation_2022_11_18(
-    rules: RulesTable, store: SnapshotStore, source: str = "steam"
+    rules: RulesTable,
+    store: SnapshotStore,
+    source: str = "steam",
+    std_window: int = 20,
+    drift_k: float = 0.5,
+    threshold_h: float = 5.0,
 ) -> str:
     """CORRECTNESS gate: CUSUM must fire on M4A4 Desolate Space near the
-    2022-11-18 M4A1-S nerf (paper1's Bai-Perron-confirmed instant break)."""
+    2022-11-18 M4A1-S nerf (paper1's Bai-Perron-confirmed instant break).
+    Detector params must be the LIVE config's (system_a.break_detector) so
+    the gate certifies the configuration that actually trades."""
     name = "M4A4 | Desolate Space (Field-Tested)"
     series = store.series(name, source=source)
     if not series:
         return "SKIPPED — no steam data for Desolate Space (run steam_history)"
     event_ts = _event_ts("2022-11-18")
     detector = CusumDetector(
-        std_window=20, drift_k=0.5, threshold_h=5.0, emitted_confidence=1.0
+        std_window=std_window, drift_k=drift_k, threshold_h=threshold_h,
+        emitted_confidence=1.0,
     )
     for end in range(2, len(series) + 1):
         window = series[:end]
@@ -272,10 +313,16 @@ def main(argv: list[str] | None = None) -> int:
         rules, store, universe,
         fee_pct=config.require("costs.buff_fee_pct"),
         lock_days=config.require("cooldown.trade_lock_days"),
+        fee_history=config.get("costs.fee_history", []),
     )
 
+    bd = config.require("system_a.break_detector")
     print("== PRIMARY VALIDATION (2022-11-18, correctness not strategy) ==")
-    print(primary_validation_2022_11_18(rules, store))
+    print(primary_validation_2022_11_18(
+        rules, store,
+        std_window=bd["std_window"], drift_k=bd["drift_k"],
+        threshold_h=bd["threshold_h"],
+    ))
 
     print("\n== PER-EVENT OUTCOMES ==")
     for o in outcomes:

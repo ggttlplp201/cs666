@@ -365,3 +365,12 @@ class TestDeploymentCeiling:
         TestEngine._seed_lot(TestEngine(), h, M4A4, 1000.0, 5, T0 - DAY)
         refused = h.gate.check_buy(item, Regime.SIDEWAYS, _leak(), 50, 1e5, T0)
         assert refused.rule == "deployment_ceiling"
+
+
+class TestEchoPersistence:
+    def test_scheduled_echo_survives_engine_restart(self, tmp_path):
+        h = Harness(tmp_path)
+        h.engine._scheduled_echoes.append((T0 + 7 * DAY, (M4A4,), "trade_up_lock_expiry_echo"))
+        h.engine._save_echoes()
+        h2 = Harness(tmp_path)   # fresh engine, same provenance dir
+        assert h2.engine._scheduled_echoes == [(T0 + 7 * DAY, (M4A4,), "trade_up_lock_expiry_echo")]

@@ -139,6 +139,14 @@ class RulesTable:
         the break says nothing about cause)."""
         if signal.direction == Direction.UNCLEAR:
             return []
+        # Strict dispatch on the attributed event rule: anything that is not
+        # weapon-balance (or an untagged/legacy signal) must NOT fall through
+        # to the weapon-balance mapping — that would let disabled or
+        # volume-only rules trade under a high-confidence rule's flag.
+        if signal.type != SignalType.MARKET_BREAK and signal.event_rule not in (
+            None, "weapon_balance_change",
+        ):
+            return []
 
         if signal.type == SignalType.MARKET_BREAK:
             return [

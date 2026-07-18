@@ -20,6 +20,9 @@ fx:
 # --- Costs & market mechanics -------------------------------------------------
 costs:
   buff_fee_pct: 0.015         # BUFF CS2 sell fee CUT 2.5%->1.5% on 2026-04-14 (buff.163.com/news/87397)
+  fee_history:                # dated seller-fee schedule — historical backtests must
+    - until: "2026-04-14"     # use the fee of the era, not today's (exclusive bound)
+      fee_pct: 0.025
   buy_fee_pct: 0.0            # buyer pays listed price (no buyer fee)
   withdrawal_fee_pct: 0.01    # 1% on cash-out (not per-trade); cap raised to 50k CNY/withdrawal
   model_round_trip_fees: true # always deduct fees before calling a trade profitable

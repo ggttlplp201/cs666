@@ -126,3 +126,12 @@ def test_load_allowlist_from_config():
     )
     assert weights["CounterStrike"] == 1.0
     assert 0 < weights["example_leaker"] < 1
+
+
+def test_contradictory_directions_never_corroborate():
+    agent = _agent(min_sources=3)
+    agent._ingest(_post("Leak: CS2 update will nerf the M4A1-S", source="trusted_leaker"))
+    agent._ingest(_post("Datamined: CS2 update buffs the M4A1-S", source="official"))
+    signals = agent._emit(now_ts=200.0)
+    assert len(signals) == 2                      # separate signals, not merged
+    assert all(len(s.sources) == 1 for s in signals)

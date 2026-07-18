@@ -171,3 +171,46 @@ class TestPrimaryValidation:
 
     def test_skip_without_data(self):
         assert primary_validation_2022_11_18(_rules(), SnapshotStore()).startswith("SKIPPED")
+
+
+class TestCodexFindings:
+    def test_fee_schedule_resolves_by_era(self):
+        from system_a.event_study import fee_for_ts
+        history = [{"until": "2026-04-14", "fee_pct": 0.025}]
+        assert fee_for_ts(_ts("2022-11-25"), 0.015, history) == 0.025
+        assert fee_for_ts(_ts("2026-05-01"), 0.015, history) == 0.015
+        assert fee_for_ts(_ts("2022-11-25"), 0.015, []) == 0.015
+
+    def test_entry_price_never_uses_past_bar(self):
+        from system_a.event_study import _price_after, _price_at_or_before
+        series = [
+            _steam_item(M4A4, 100.0, _ts("2022-11-16")),
+            _steam_item(M4A4, 130.0, _ts("2022-11-20")),
+        ]
+        event = _ts("2022-11-18")
+        assert _price_after(series, event) == 130.0        # next bar, not 100
+        assert _price_after(series, event, max_delay_days=1.0) is None
+        assert _price_at_or_before(series, event) == 100.0  # context only
+
+    def test_unhandled_event_type_is_noted_not_silent(self):
+        rules = RulesTable(
+            {"event_rules": [], "substitute_pairs": [],
+             "historical_events": [
+                 {"date": "2025-10-30", "type": "trade_up_lock_expiry",
+                  "change": "locks expired"},
+             ]}
+        )
+        _, _, notes = run_event_study(
+            rules, SnapshotStore(), [M4A4], fee_pct=0.015, lock_days=7,
+        )
+        assert any("produced no signals" in n for n in notes)
+
+    def test_non_balance_event_rule_cannot_map_to_trades(self):
+        from shared.schema import Signal, SignalType
+        rules = _rules()
+        signal = Signal(
+            tier=2, type=SignalType.CONFIRMED_UPDATE, items=("M4A1-S",),
+            direction=Direction.BEARISH, confidence=1.0, first_seen_ts=0.0,
+            event_rule="map_pool_change",
+        )
+        assert rules.map_signal(signal, [M4A4, M4A1S]) == []

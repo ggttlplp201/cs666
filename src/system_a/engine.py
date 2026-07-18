@@ -19,6 +19,7 @@ Every decision — including every refusal — lands in the provenance log
 from __future__ import annotations
 
 import itertools
+import json
 from datetime import datetime, timezone
 
 from shared.bus import SignalBus
@@ -75,9 +76,28 @@ class ReactiveEngine:
         self._daily_realized_baseline: tuple[str, float] | None = None
         self.tracked_items = sorted(set(universe))
         # Scheduled T+7 lock-expiry echoes (rules table: trade_up timing) —
-        # (due_ts, bearish item names, originating rule id).
-        self._scheduled_echoes: list[tuple[float, tuple[str, ...], str]] = []
+        # (due_ts, bearish item names, originating rule id). Persisted to disk
+        # so a restart between the trade-up event and lock expiry cannot lose
+        # the predictable second-wave exit.
+        self._echo_state_path = provenance.path.parent / "scheduled_echoes_a.json"
+        self._scheduled_echoes: list[tuple[float, tuple[str, ...], str]] = (
+            self._load_echoes()
+        )
         self._alerted_watch_keys: set[str] = set()
+
+    def _load_echoes(self) -> list[tuple[float, tuple[str, ...], str]]:
+        if not self._echo_state_path.exists():
+            return []
+        return [
+            (float(due), tuple(items), str(rule))
+            for due, items, rule in json.loads(self._echo_state_path.read_text())
+        ]
+
+    def _save_echoes(self) -> None:
+        self._echo_state_path.write_text(
+            json.dumps([[due, list(items), rule]
+                        for due, items, rule in self._scheduled_echoes])
+        )
 
     def _next_id(self, prefix: str) -> str:
         return f"a-{prefix}-{next(self._ids)}"
@@ -148,6 +168,7 @@ class ReactiveEngine:
         due = signal.first_seen_ts + lock_days * 86400.0
         if all(e[0] != due or e[1] != bearish for e in self._scheduled_echoes):
             self._scheduled_echoes.append((due, bearish, "trade_up_lock_expiry_echo"))
+            self._save_echoes()
 
     def _due_echo_marks(self, now_ts: float, regime: Regime) -> set[str]:
         marks: set[str] = set()
@@ -161,7 +182,9 @@ class ReactiveEngine:
                 )
             else:
                 remaining.append((due, items, rule))
-        self._scheduled_echoes = remaining
+        if len(remaining) != len(self._scheduled_echoes):
+            self._scheduled_echoes = remaining
+            self._save_echoes()
         return marks
 
     def _log_watch_alerts(self, now_ts: float, regime: Regime) -> None:

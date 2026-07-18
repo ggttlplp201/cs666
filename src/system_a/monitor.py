@@ -87,8 +87,8 @@ class Classifier(Protocol):
     def classify(self, post: RawPost, known_items: list[str]) -> Classification | None: ...
 
 
-_BULLISH = re.compile(r"\b(buff(ed)?|discontinu\w+|removed from|retired|rework)\b", re.I)
-_BEARISH = re.compile(r"\b(nerf(ed)?|re-?release|returning|armory|unbox\w*)\b", re.I)
+_BULLISH = re.compile(r"\b(buff(s|ed|ing)?|discontinu\w+|removed from|retired|rework)\b", re.I)
+_BEARISH = re.compile(r"\b(nerf(s|ed|ing)?|re-?release|returning|armory|unbox\w*)\b", re.I)
 _LEAK = re.compile(r"\b(leak\w*|datamin\w*|rumor|unannounced|upcoming)\b", re.I)
 _OFFICIAL = re.compile(r"\b(release notes|update is live|patch notes|shipped)\b", re.I)
 _HYPE = re.compile(r"\b(to the moon|100%|guaranteed|easy money|all[- ]?in|pump\w*)\b", re.I)
@@ -245,7 +245,13 @@ class MonitorAgent:
         result = self.classifier.classify(post, self.known_items)
         if result is None:
             return
-        key = f"{result.type.value}|{','.join(sorted(result.items))}"
+        # Direction and event rule are part of the identity: a "buff" post and
+        # a "nerf" post about the same item are CONTRADICTORY evidence and
+        # must never corroborate each other.
+        key = (
+            f"{result.type.value}|{','.join(sorted(result.items))}"
+            f"|{result.direction.value}|{result.event_rule or ''}"
+        )
         contribution = result.confidence * self.allowlist[post.source]
         if key in self._pending:
             existing, contributions, first_ts = self._pending[key]
