@@ -72,7 +72,12 @@ class MappedCandidate:
 
 
 class RulesTable:
-    def __init__(self, data: dict, disabled_rules: list[str] | None = None):
+    def __init__(
+        self,
+        data: dict,
+        disabled_rules: list[str] | None = None,
+        disabled_pairs: list[str] | None = None,
+    ):
         self.pairs = [
             SubstitutePair(
                 id=p["id"], a=p["a"], b=p["b"],
@@ -93,14 +98,22 @@ class RulesTable:
         self.historical_events = data.get("historical_events", [])
         self.todo = data.get("todo", [])
         self.disabled_rules = set(disabled_rules or [])
+        # Pairs that failed the event-study backtest — log-only regardless of
+        # confidence (config system_a.rules_gating.disabled_pairs).
+        self.disabled_pairs = set(disabled_pairs or [])
         self.weapons = sorted(
             {p.a for p in self.pairs} | {p.b for p in self.pairs},
             key=len, reverse=True,   # match "MP5-SD" before "MP5", etc.
         )
 
     @classmethod
-    def load(cls, path: Path, disabled_rules: list[str] | None = None) -> "RulesTable":
-        return cls(yaml.safe_load(path.read_text()), disabled_rules)
+    def load(
+        cls,
+        path: Path,
+        disabled_rules: list[str] | None = None,
+        disabled_pairs: list[str] | None = None,
+    ) -> "RulesTable":
+        return cls(yaml.safe_load(path.read_text()), disabled_rules, disabled_pairs)
 
     # ------------------------------------------------------------------ #
     def rule_tradeable(self, rule_id: str) -> bool:
@@ -202,7 +215,11 @@ class RulesTable:
                 Direction.BULLISH if direction == Direction.BEARISH
                 else Direction.BEARISH
             )
-            pair_tradeable = rule_ok and pair.confidence in TRADEABLE_CONFIDENCES
+            pair_tradeable = (
+                rule_ok
+                and pair.confidence in TRADEABLE_CONFIDENCES
+                and pair.id not in self.disabled_pairs
+            )
             add(
                 self.items_for_weapon(substitute, universe), inverse,
                 f"substitute_pair:{pair.id}", pair.confidence, pair.evidence,

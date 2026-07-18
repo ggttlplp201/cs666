@@ -43,6 +43,10 @@ rules_gating:
   # disabled until the event-study backtest disambiguates the demand-positive
   # vs new-collection-supply conflict (rules table §2 map_pool_change / §3 Cache).
   disabled_rules: [map_pool_change]
+  # Pairs that FAILED the event-study backtest net of fees+lock — log-only
+  # until re-validated. scoped_rifles: 0/2 directional, -9.3% net (2026-07-18
+  # run on Steam data; matches the pair's own "prices less directly" note).
+  disabled_pairs: [scoped_rifles]
   # trade_up collection→gold-output map (rules table §4 todo — Leon supplies).
   # While empty, trade_up_pool_change candidates are log-only.
   collections_with_gold: []

@@ -294,10 +294,11 @@ def main(argv: list[str] | None = None) -> int:
                         default=repo_root / config.require("data.snapshot_poller")["db_path"])
     args = parser.parse_args(argv)
 
-    gating = config.get("system_a.rules_gating", {}) or {}
+    # The event study measures EVERY rule/pair, including ones config has
+    # disabled for live trading — that's how a disabled rule earns its way
+    # back in (or stays out). Gating applies in the live stack only.
     rules = RulesTable.load(
         repo_root / config.require("system_a.rules_table_path"),
-        disabled_rules=gating.get("disabled_rules", []),
     )
     seed = repo_root / config.require("data.steam_history")["items_file"]
     universe = sorted(

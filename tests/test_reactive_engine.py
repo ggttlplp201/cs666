@@ -374,3 +374,16 @@ class TestEchoPersistence:
         h.engine._save_echoes()
         h2 = Harness(tmp_path)   # fresh engine, same provenance dir
         assert h2.engine._scheduled_echoes == [(T0 + 7 * DAY, (M4A4,), "trade_up_lock_expiry_echo")]
+
+
+def test_backtest_failed_pair_is_log_only_live():
+    # scoped_rifles FAILED the 2026-07-18 event study (-9.3% net) → config
+    # disabled_pairs makes it log-only in the live stack despite confidence=medium
+    rules = RulesTable.load(
+        REPO_ROOT / "config" / "rules_table_a.yaml",
+        disabled_rules=["map_pool_change"], disabled_pairs=["scoped_rifles"],
+    )
+    universe = ["SG 553 | Cyrex (Field-Tested)"]
+    candidates = rules.map_signal(_leak(items=("AUG",)), universe)
+    pair_candidates = [c for c in candidates if c.rule == "substitute_pair:scoped_rifles"]
+    assert pair_candidates and all(not c.tradeable for c in pair_candidates)

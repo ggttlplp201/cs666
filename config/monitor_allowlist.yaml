@@ -1,10 +1,138 @@
-# Social-monitor account allowlist (System A §7.1) — hot-editable, non-secret.
-# TODO(Leon): supply the real leaker/official accounts (HANDOFF §A).
-# `weight` scales a post's base confidence (1.0 = fully trusted official).
-accounts:
-  - handle: CounterStrike        # official — placeholder entry, confirm list
-    platform: x
-    weight: 1.0
-  - handle: example_leaker       # TODO(Leon): replace with real dataminer/leaker handles
-    platform: x
-    weight: 0.6
+# config/monitor_allowlist.yaml
+# Sources for the System A social/news monitor (docs/System-A §7).
+#
+# TIERING maps to the shared signal bus tiers:
+#   tier_official  -> Tier 2 (confirmed events)  — highest trust, LATEST timing
+#   tier_datamine  -> Tier 1 (leaks/rumors)      — earliest signal, needs corroboration
+#   tier_market    -> Tier 2/3 (context)         — market commentary, not leaks
+#
+# `weight` feeds the corroboration score in config/system_a.yaml
+# (monitor.confidence_min_to_act, corroboration_min_sources).
+#
+# TIMING/ALPHA TRADEOFF: official announcements are certain but already priced — bots act
+# in seconds. Datamine leaks give days-to-months of lead time at lower certainty. System A's
+# edge lives in Tier 1 + correct item mapping, NOT in racing Tier 2.
+#
+# Last researched: 2026-07-18. Re-verify handles quarterly — accounts go dormant/rename.
+
+# =============================================================================
+# TIER: OFFICIAL — ground truth, zero false positives, but zero lead time
+# =============================================================================
+tier_official:
+  weight: 1.0
+  auto_confirm: true          # a post here alone confirms an event (Tier 2)
+  sources:
+    - handle: CounterStrike
+      platform: x
+      note: Official Valve CS account. Update announcements land here.
+    - name: CS2 official blog
+      platform: web
+      url: https://www.counter-strike.net/news
+      note: Full patch notes. Poll directly — don't wait for X.
+    - name: Steam news (app 730)
+      platform: web
+      note: Mirrors the blog; sometimes posts marginally earlier.
+
+# =============================================================================
+# TIER: DATAMINE / LEAKS — the actual alpha source
+# =============================================================================
+tier_datamine:
+  weight: 0.7
+  auto_confirm: false         # requires corroboration before acting
+  sources:
+    - handle: gabefollower
+      platform: x
+      name: Maxim "Gabe Follower" Poletayev
+      weight: 0.85
+      also_on: [telegram, youtube]
+      track_record: >
+        The most prominent CS2 dataminer. Verified hits: Premier seasons + global
+        leaderboards (Aug 2023, shipped); Armory bidding system (Jul 2025); de_cache_s2
+        smartprop debris models — Cache RETURNED to Active Duty 2026-07-09, months later;
+        clothing skins/keychains (Jun 2024); operation missions/quests code (Jun 2025).
+      note: >
+        HIGHEST-VALUE SINGLE ACCOUNT. Posts to Telegram as well as X — consider ingesting
+        both, since Telegram sometimes leads.
+
+    - handle: aquaismissing
+      platform: x
+      name: Aquarius
+      weight: 0.8
+      track_record: >
+        Verified hits: de_cbble_s2 Cobblestone on Source 2 (Aug 2022); Premier hub layout
+        (Aug 2023); "absolute certainty" call on a new weapon case (Jun 2024, shipped).
+      note: Second most reliable. Frequently corroborates/extends Gabe Follower's finds.
+
+    - handle: SigaTbh
+      platform: x
+      weight: 0.6
+      track_record: Co-credited on the de_cache_s2 debris-model find that preceded Cache's return.
+      note: Lower volume; useful as a third corroborating source.
+
+    - handle: poggu__
+      platform: x
+      weight: 0.6
+      track_record: Sourced UI/menu assets for the Premier hub leak (Aug 2023).
+      note: Often supplies the images others reference. Good corroboration signal.
+
+    - name: SteamDB (app 730)
+      platform: [x, web]
+      handle: SteamDB
+      weight: 0.75
+      note: >
+        AUTOMATED depot/build change tracking — often the EARLIEST possible signal, before
+        any human posts. A build push doesn't say WHAT changed, but it's a reliable
+        "something is shipping right now" trigger. High precision on timing, zero on content.
+        Pair it with the market-data break detector (System-A §4.1a).
+
+# =============================================================================
+# TIER: MARKET COMMENTARY — context and confirmation, not leaks
+# =============================================================================
+tier_market:
+  weight: 0.4
+  auto_confirm: false
+  sources:
+    - handle: pricempire
+      platform: x
+      note: >
+        Market cap milestones and impact reporting (e.g. quantified the -$1.75B knife
+        trade-up crash). Useful for magnitude confirmation, NOT for early entry.
+    - name: csmarketcap
+      platform: web
+      url: https://csmarketcap.com
+      note: Total market cap tracking — feeds the regime detector (Shared §2), not entries.
+    - handle: HLTVorg
+      platform: x
+      note: Esports/patch coverage. Calendar events only — remember these move VOLUME, not price.
+
+# =============================================================================
+# TIER: CHINESE MARKET — TODO(Leon): you know this scene, I don't
+# =============================================================================
+# I could not verify specific handles from Western sources. These platforms are where
+# manipulation/hype forms FIRST (the EG-sticker pattern), so this tier matters for the
+# pump-detection blocklist even though it rarely produces update leaks.
+tier_chinese:
+  weight: 0.5
+  auto_confirm: false
+  sources: []
+  todo:
+    - Xiaohongshu/RedNote CS-market accounts you already follow
+    - Weibo CS2 market commentators
+    - BUFF community/forum threads worth polling
+    - Bilibili CS-market channels (the crash-course-style content creators)
+  note: >
+    Primary use is DETECTING PUMPS EARLY so we can blocklist them (Shared §8.1),
+    not finding update leaks. Treat as untrusted input feeding scores only.
+
+# =============================================================================
+# GUARDRAILS
+# =============================================================================
+guardrails:
+  untrusted_input: true       # social content NEVER directly triggers a trade
+  require_market_corroboration: true   # signal + market-data confirmation before acting
+  fake_leak_defense: >
+    Planted "leaks" designed to bait bots are a real risk. This is why tier_datamine
+    has auto_confirm: false and corroboration_min_sources > 1. A single unknown account
+    claiming a nerf must never move capital.
+  dedupe_reposts: true
+  signal_decay_hours: 48

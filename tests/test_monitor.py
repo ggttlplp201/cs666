@@ -124,8 +124,11 @@ def test_load_allowlist_from_config():
     weights = load_allowlist(
         Path(__file__).resolve().parents[1] / "config" / "monitor_allowlist.yaml"
     )
-    assert weights["CounterStrike"] == 1.0
-    assert 0 < weights["example_leaker"] < 1
+    assert weights["CounterStrike"] == 1.0        # tier_official default
+    assert weights["gabefollower"] == 0.85        # per-source override
+    assert weights["SteamDB"] == 0.75
+    assert weights["pricempire"] == 0.4           # tier_market default
+    assert "Xiaohongshu" not in weights           # tier_chinese is an empty todo
 
 
 def test_contradictory_directions_never_corroborate():

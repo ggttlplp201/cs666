@@ -60,6 +60,7 @@ def build_stack(config: Config, posts_path: Path | None):
     rules = RulesTable.load(
         REPO_ROOT / config.require("system_a.rules_table_path"),
         disabled_rules=gating.get("disabled_rules", []),
+        disabled_pairs=gating.get("disabled_pairs", []),
     )
     gate = RiskGate(config, ledger)
     provenance = ProvenanceLog(REPO_ROOT / "var" / "provenance_a.jsonl")
@@ -120,7 +121,7 @@ def run_demo(config: Config) -> int:
     event_ts = series[21][0].ts
     posts = [
         {
-            "source": "example_leaker", "platform": "x",
+            "source": "gabefollower", "platform": "x",
             "text": "Datamined: upcoming CS2 update nerfs the M4A1-S", "ts": event_ts - 3600,
         },
         {

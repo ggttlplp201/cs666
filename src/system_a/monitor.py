@@ -197,8 +197,20 @@ class AnthropicClassifier:
 
 
 def load_allowlist(path: Path) -> dict[str, float]:
+    """Parse the tiered allowlist (config/monitor_allowlist.yaml): tier_*
+    sections carry a default weight; individual sources may override it.
+    Sources are keyed by handle when present, else by name (web sources)."""
     data = yaml.safe_load(path.read_text())
-    return {a["handle"]: float(a.get("weight", 0.5)) for a in data["accounts"]}
+    weights: dict[str, float] = {}
+    for section, block in data.items():
+        if not section.startswith("tier_") or not isinstance(block, dict):
+            continue
+        tier_weight = float(block.get("weight", 0.5))
+        for source in block.get("sources") or []:
+            key = source.get("handle") or source.get("name")
+            if key:
+                weights[key] = float(source.get("weight", tier_weight))
+    return weights
 
 
 class MonitorAgent:
