@@ -35,4 +35,14 @@ break_detector:
   emitted_confidence: 0.75 # confidence of the MARKET_BREAK signal on the bus
 
 # --- Rules table (content supplied by Builder 1; file path here) --------------
-rules_table_path: config/rules_table_a.yaml   # substitute pairs, trade-up/pool effects, etc.
+rules_table_path: config/rules_table_a.yaml   # substitute pairs, event rules, labeled events
+
+# --- Rule gating (researched table wiring) ------------------------------------
+rules_gating:
+  # Rules here are LOG-ONLY regardless of confidence. map_pool_change stays
+  # disabled until the event-study backtest disambiguates the demand-positive
+  # vs new-collection-supply conflict (rules table §2 map_pool_change / §3 Cache).
+  disabled_rules: [map_pool_change]
+  # trade_up collection→gold-output map (rules table §4 todo — Leon supplies).
+  # While empty, trade_up_pool_change candidates are log-only.
+  collections_with_gold: []

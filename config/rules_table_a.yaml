@@ -1,43 +1,324 @@
-# Rules table (System A §4.1 step 2) — the cause→effect item mapping.
+# config/rules_table_a.yaml
+# System A cause→effect rules. THIS FILE IS THE ALPHA — everything else is plumbing.
 #
-# ⚠ SEEDED FROM THE DOCS ONLY — every entry below is either taken verbatim
-# from docs/System-A_Event-Driven_Reactive.md / RESEARCH_INDEX.md or is a
-# schema placeholder. Leon reviews, corrects, and extends this file
-# (HANDOFF §A: "don't invent the rules table"). Nothing here is invented
-# beyond what the docs state.
+# Every entry carries `confidence` and `evidence`. Rules marked confidence: low are
+# HYPOTHESES to validate in the event-study backtest before trading them.
+# Magnitudes are historical observations, NOT predictions — they set expectations, not targets.
+#
+# Sources: Valve update notes, HLTV, market coverage (csmarketcap, pricempire, skin.land,
+# waxpeer), and research/papers/paper1.pdf (Nikolaenko Bai-Perron break dates).
 
-# Substitute pairs: a nerf to one side is bullish for the other (Nikolaenko;
-# docs §4.1). TODO(Leon): add the other role-substitute pairs.
+meta:
+  last_updated: 2026-07-18
+  maintainer: leon
+  review_cadence_days: 30   # meta drifts; re-validate rules quarterly
+
+# =============================================================================
+# 1. SUBSTITUTE PAIRS — nerf A ⇒ demand/price shifts to B (and vice versa)
+# =============================================================================
+# The single cleanest, best-documented System A signal. paper1's Bai-Perron breaks
+# land exactly on M4A4/M4A1-S balance dates, with the reaction on the substitute
+# described as "instant".
+
 substitute_pairs:
-  - [M4A4, M4A1-S]
+  - id: ct_rifle
+    a: M4A1-S
+    b: M4A4
+    slot: CT primary rifle
+    confidence: high
+    evidence: >
+      paper1 found structural breaks on M4A1-S buff (2021-09-22) and nerf (2022-11-18);
+      the M4A4 Desolate Space break on 2022-11-18 was immediate. Valve explicitly
+      manages these two as a "pick'em" (Jan 2025 price parity at $2,900).
+    notes: >
+      Strongest pair in the game. Both directions confirmed. Watch mag/ammo changes too,
+      not just damage/accuracy — the Mar 2026 reload update was effectively an M4A1-S nerf.
 
-# Effect templates per event cause (docs §4.1 bullet list).
-effects:
-  weapon_balance_nerf:
-    self: bearish            # nerfed weapon's skins fall
-    substitute: bullish      # its substitute's skins rise
-  weapon_balance_buff:
-    self: bullish
-    substitute: bearish
-  trade_up_pool_change:
-    input_tiers: bearish     # tiers fed into the contract drop
-    output_tier: bullish     # output tier + adjacent red-tier spike
-  new_case_or_collection:
-    older_discontinued_same_class: bullish   # scarcity narrative
-  armory_re_release:
-    affected_collection: bearish             # supply expectation ↑ → soften
+  - id: scoped_rifles
+    a: AUG
+    b: SG 553
+    slot: scoped rifle (CT / T)
+    confidence: medium
+    evidence: >
+      Historically the biggest swing pair: AUG dominant 2019, SG553 dominant 2020,
+      then SG553 nerfed (rate of fire + accuracy) Apr 2020. Both untouched in the
+      Mar 2026 reload update; Dec 2025 gave both a scope-dot visibility buff.
+    notes: Cross-side substitutes (AUG=CT, SG=T) — usage correlates, prices less directly.
 
-# Weight the table toward second-order items the fast bots miss (§4.1 tail).
-second_order_bias: true
+  - id: ct_smg
+    a: MP9
+    b: MP5-SD
+    slot: CT SMG
+    confidence: medium
+    evidence: >
+      Jan 2025 nerfed MP9/MP5-SD/MP7 crouch accuracy together; Mar 2026 reload update
+      hit MP9 (-60 bullets) harder than MP5-SD/MP7 (-30).
+    notes: Often nerfed *together*, which mutes the substitution effect. Check relative magnitude.
 
-# Entity → tradeable market_hash_names. The two names below are the items the
-# research corpus itself tracks (Nikolaenko's pair) — placeholder universe
-# until Leon supplies the real tracked list per weapon/collection.
-item_map:
-  M4A4:
-    - "M4A4 | Desolate Space (Field-Tested)"
-  M4A1-S:
-    - "M4A1-S | Decimator (Field-Tested)"
-  # TODO(Leon): collections, e.g.
-  # Cache Collection:
-  #   - "Galil AR | Hellhound (Factory New)"
+  - id: ct_pistol
+    a: USP-S
+    b: P2000
+    slot: CT starting pistol
+    confidence: medium
+    evidence: Both unchanged in Mar 2026 reload; USP-S's 2 backup mags made it a de facto nerf.
+    notes: P2000 skin market is thin — check liquidity before trading this pair.
+
+  - id: budget_rifle_ct
+    a: FAMAS
+    b: M4A4
+    slot: CT rifle (budget ↔ full)
+    confidence: medium
+    evidence: >
+      Jan 2025: FAMAS accuracy buff + price cut to $1,950. Mar 2026: FAMAS +9% ammo.
+      Coverage noted increased FAMAS playtime → liquidity for cheap FAMAS skins.
+    notes: Budget substitution — buffing FAMAS pulls eco-round usage, not full-buy usage.
+
+  - id: budget_rifle_t
+    a: Galil AR
+    b: AK-47
+    slot: T rifle (budget ↔ full)
+    confidence: medium
+    evidence: >
+      Mar 2026 reload update: Galil +40-50% ammo (125→175) — the single biggest buff
+      in that patch; AK-47 unchanged. Coverage explicitly recommended Galil on ecos.
+    notes: >
+      Relevant to the crash course's Hellhound (Galil) thesis — a Galil buff supports
+      secondary-meta Galil skins.
+
+  - id: sniper
+    a: AWP
+    b: SSG 08
+    slot: sniper
+    confidence: low
+    evidence: Mar 2026 hit BOTH hard (SSG-08 -70%, AWP -57%) — no substitution, both nerfed.
+    notes: >
+      Weak pair: they're usually changed in the same direction. AWP skins are also
+      demand-driven by prestige, not just usage. Validate before trusting.
+
+  - id: heavy_pistol
+    a: Desert Eagle
+    b: R8 Revolver
+    slot: heavy pistol
+    confidence: low
+    evidence: >
+      Mar 2026: Deagle -14 bullets, R8 +50% ammo. Directionally a substitution event.
+    notes: R8 skin market is thin/illiquid. Mostly untradeable in practice — check depth.
+
+# =============================================================================
+# 2. EVENT-TYPE RULES
+# =============================================================================
+
+event_rules:
+
+  # ---------------------------------------------------------------------------
+  - id: weapon_balance_change
+    trigger: Valve update notes contain buff/nerf to a weapon's damage, accuracy, price, or ammo
+    confidence: high
+    logic:
+      - nerfed weapon  → its skins BEARISH (reduce/avoid)
+      - substitute (§1) → its skins BULLISH (buy)
+      - if both sides of a pair change in the same direction → NO substitution trade
+    timing: >
+      Reaction can be instant (paper1: 2022-11-18 nerf → same-day break on the substitute)
+      or gradual over weeks (2021-09-22 buff showed a lagged "gradual market reaction").
+      Assume instant for liquid meta skins, lagged for secondary items — the lagged ones
+      are where a non-latency-competitive system can still win.
+    magnitude: Historically level-shifts, not spikes. Durable — survives the T+7 lock.
+    second_order: >
+      Fast bots hit the obvious meta skins first. Edge is in secondary/adjacent items
+      (cheap finishes of the buffed weapon, StatTrak variants, adjacent wear tiers).
+    notes: >
+      Ammo/magazine changes count as balance changes. The Mar 2026 reload update was
+      not framed as a balance patch but functioned as one.
+
+  # ---------------------------------------------------------------------------
+  - id: trade_up_pool_change
+    trigger: Valve changes Trade Up Contract inputs/outputs or eligible rarities
+    confidence: high
+    logic:
+      - INPUT tier (consumed as fuel) → BULLISH, often violently
+      - OUTPUT tier (newly craftable → supply expands) → BEARISH
+      - eligibility is per-COLLECTION → only reds in collections containing the desired
+        gold-tier output surge; reds in collections without a knife/glove do NOT
+      - CHEAP reds surge most (viable fuel); expensive reds ($500+) surge less —
+        nobody burns a $500 skin to craft a $95 Navaja
+      - StatTrak inputs → StatTrak outputs, so StatTrak reds get their own bid
+    timing: >
+      Hours. Plus a SECOND wave at T+7 when crafted-item trade locks expire
+      (Oct 23 2025 update → Oct 30 lock expiry → further 10-15% knife dip).
+      The T+7 echo is a scheduled, predictable event — plan the exit around it.
+    magnitude: >
+      Oct 2025 precedent: reds +5x to +20x; knives/gloves -20% to -50%;
+      total market cap -45% ($609M→$337M) within hours.
+    notes: >
+      THE canonical event. Model this one carefully — it is the highest-magnitude
+      event class in CS2 history and the crash course's founding example.
+
+  # ---------------------------------------------------------------------------
+  - id: armory_rotation
+    trigger: Armory collections rotate in/out (seasonal, with Premier season starts)
+    confidence: medium
+    logic:
+      - collection ROTATED OUT → supply becomes fixed → BULLISH, gradual appreciation,
+        strongest for the most desirable items in that collection
+      - collection ROTATED IN → new supply → BEARISH for comparable existing items
+    timing: Gradual (weeks-months), not a spike. Suits patient accumulation, not a race.
+    magnitude: Modest and slow. Do not expect trade-up-style moves.
+    notes: >
+      This is the supply-side mechanic the crash course's Hellhound thesis rests on.
+      Rotation is scheduled/predictable — position BEFORE the announced rotation, since
+      the event itself is public well in advance.
+
+  # ---------------------------------------------------------------------------
+  - id: map_pool_change
+    trigger: Map added to / removed from Active Duty
+    confidence: low
+    logic:
+      - map ADDED to Active Duty → its collection items BULLISH (relevance/nostalgia)
+      - map REMOVED → its collection items BEARISH
+      - "⚠️ AMBIGUITY: a map returning may PRECEDE Valve releasing a NEW collection
+        for that map, which would be BEARISH (supply expansion) — the opposite trade."
+    timing: Unclear. Needs backtest.
+    notes: >
+      UNRESOLVED and important — see the Cache case in §3. The crash course treats a
+      Cache re-release as a supply RISK to the Hellhound thesis, while map-return alone
+      is a demand POSITIVE. These point in opposite directions. Do NOT trade this rule
+      until the backtest disambiguates. Monitor for a Cache-collection announcement.
+
+  # ---------------------------------------------------------------------------
+  - id: new_case_release
+    trigger: New weapon case added to the active drop pool
+    confidence: medium
+    logic:
+      - new case contents → BEARISH (fresh supply)
+      - older cases shift to rare/discontinued → their contents BULLISH over time
+      - "case PRICE rises → signals opening activity → BEARISH for that case's skins
+        (paper2: case price/activity was a real negative predictor of skin returns)"
+    timing: Gradual. paper2 measured a +34% volume spike in case-release week — that's
+      LIQUIDITY, not direction. Use it to time entries, not to bet direction.
+    confidence_note: paper2's finding is Steam-based; validate on BUFF.
+
+  # ---------------------------------------------------------------------------
+  - id: calendar_esports_event
+    trigger: Steam sale, Major, S-tier tournament, Operation
+    confidence: high
+    logic: VOLUME/LIQUIDITY ONLY — do NOT trade direction on these.
+    evidence: >
+      paper2 (640k obs): events had negligible effect on daily returns but measurable
+      effect on quantity sold — Operations +33.5%, case-release week +34%, case day
+      +16.6%, S-tier +8.1%, Steam sale +2.5%, Majors -7.9% (attention shifts away).
+      paper1 separately found semi-annual dips during Steam sales (players liquidate
+      skins to buy discounted games).
+    logic_detail:
+      - Steam sale windows → expect liquidation DIPS → buying opportunity, don't panic-sell
+      - Majors → volume DOWN → thinner books, worse fills, size down
+      - Operations / case-release weeks → volume UP → better liquidity for entries/exits
+
+# =============================================================================
+# 3. HISTORICAL EVENT SET — labeled data for the event-study backtest
+# =============================================================================
+# This doubles as the HANDOFF §A "labeled set of past update→reaction events".
+# Backtest each: did the predicted items move enough to profit AFTER the 2.5% fee
+# and the 7-day lock? Any rule that fails here should not be traded live.
+
+historical_events:
+
+  - date: 2021-09-22
+    type: weapon_balance_change
+    change: M4A1-S significant buff
+    predicted: M4A1-S skins ↑, M4A4 skins ↓
+    observed: >
+      paper1: player preference shifted toward M4A1-S; price gap visible BEFORE the
+      Bai-Perron breakpoint — "gradual reaction of the market".
+    test: Does a lagged entry (days after the update) still clear fees + lock?
+
+  - date: 2022-11-18
+    type: weapon_balance_change
+    change: M4A1-S nerf
+    predicted: M4A1-S skins ↓, M4A4 skins ↑
+    observed: >
+      paper1: "Bai-Perron test finds this date perfectly, as the reaction on Desolate
+      Space was instant." Highest-confidence single data point we have.
+    test: PRIMARY VALIDATION CASE — if the pipeline can't detect this, it's broken.
+
+  - date: 2025-01-28
+    type: weapon_balance_change
+    change: >
+      M4A4 price $3000→$2900 (parity with M4A1-S); FAMAS accuracy buff + price→$1950;
+      MP9/MP5-SD/MP7 crouch accuracy nerfed; AUG/SG scope dot buff.
+    predicted: M4A4 ↑, FAMAS ↑ (liquidity), SMG skins ↓, AUG/SG high-tier ↑
+    test: Multi-weapon event — good test of the rules table's breadth.
+
+  - date: 2025-10-22
+    type: trade_up_pool_change
+    change: Trade Up Contract extended — 5 Covert (red) → 1 Knife/Glove, same collection
+    predicted: reds ↑↑↑, knives/gloves ↓↓
+    observed: >
+      Market cap $609M→$337M (-45%) in hours. Knives/gloves -20% to -50%.
+      Reds +5x to +20x. Examples: MP9 Starlight Protector $5→$42 (+840%);
+      MP7 Bloodsport FN $8.77→$104; Karambit Doppler FN $1200→$740 (-38%);
+      Butterfly Fade FN $1000→$690; Navaja Crimson Web FN $200→$95.
+    test: >
+      Can the system detect and act within the window? Critically — does the T+7 lock
+      let you exit before the 2025-10-30 lock-expiry second wave?
+
+  - date: 2025-10-30
+    type: trade_up_lock_expiry
+    change: Crafted knives/gloves became tradeable (T+7 after the update)
+    predicted: further knife/glove ↓
+    observed: additional 10-15% knife dip
+    test: >
+      Scheduled second-order event. Validates that the system models T+7 echoes,
+      not just the initial shock.
+
+  - date: 2025-12-16
+    type: weapon_balance_change
+    change: M4A4 price cut; FAMAS accuracy + price $1950; MP9/MP7/MP5-SD crouch nerf; AUG/SG scope buff
+    predicted: M4A4 ↑, FAMAS liquidity ↑, SMG ↓, AUG/SG collectibles ↑
+    note: Overlaps with the Jan 2025 patch in reporting — verify exact date before backtesting.
+
+  - date: 2026-03-18
+    type: weapon_balance_change
+    change: >
+      Reload/ammo overhaul. Buffs: Galil +40-50% (125→175), M4A4 +25% (120→150),
+      CZ75-A +50%, R8 +50%, FAMAS +9%, P250, PP-Bizon. Nerfs: SSG-08 -70% (100→30),
+      AWP -57% (35→15), Five-SeveN -50%, MAG-7 -46%, G3SG1/SCAR-20 -45%,
+      Glock/MP9/Duals -60 rounds, MP5-SD/MP7 -30, M4A1-S -20, Deagle -14, MAC-10 -10.
+      Unchanged: AK-47, AUG, SG 553, USP-S, P2000, P90, Negev, Nova, XM1014, M249, Zeus.
+    predicted: >
+      Galil ↑ (biggest buff), M4A4 ↑, FAMAS ↑, CZ75-A ↑, R8 ↑;
+      AWP ↓, SSG-08 ↓, M4A1-S ↓, MP9 ↓, Deagle ↓.
+    test: >
+      MOST RECENT LARGE BALANCE EVENT and the best test of the substitute-pair rule
+      (M4A4 buffed AND M4A1-S nerfed simultaneously = maximum expected divergence).
+      Also tests whether an "ammo" patch — not framed as a balance patch — is detected.
+
+  - date: 2026-07-09
+    type: [armory_rotation, map_pool_change]
+    change: >
+      Premier Season 5. Cache returns to Active Duty (replacing Overpass) — first time
+      in ~7 years. Armory rotation: IN = Spy Tech, Arabesque (weapons), Fruits &
+      Vegetables, Auto Racing (stickers). OUT = Train 2025, Sport & Field (weapons),
+      Sugarface 2, Elemental Craft (stickers). C4 explosion rework. Premier ratings reset.
+    predicted: >
+      Rotated-OUT collections (Train 2025, Sport & Field, Sugarface 2, Elemental Craft)
+      → supply now fixed → gradual appreciation for the desirable items.
+      Cache-collection items → AMBIGUOUS (see map_pool_change rule).
+    status: ⚠️ ACTIVE / LIVE EVENT — only ~9 days old as of this file's date.
+    test: >
+      This is a live forward test, not just a backtest. Track the rotated-out
+      collections from here and measure whether the appreciation thesis holds.
+      ALSO: monitor for any announcement of a NEW Cache collection — that would
+      resolve the map_pool_change ambiguity and flip the Cache trade bearish.
+
+# =============================================================================
+# 4. KNOWN GAPS — to fill from your own market knowledge
+# =============================================================================
+todo:
+  - Sticker/capsule rules (the EG-sticker case is a manipulation event, not a Valve
+    event — belongs in the pump-detection blocklist, not here).
+  - Souvenir package mechanics and Major-linked souvenir supply.
+  - Collection→knife/glove pool mapping for the trade-up rule (e.g. Clutch Case reds →
+    Sport Gloves Vice; Operation Hydra reds → Hydra Gloves Emerald). Needs the full table.
+  - Discontinued/rare case transition schedule.
+  - Chinese-market-specific effects the Western sources don't cover.

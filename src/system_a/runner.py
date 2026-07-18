@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 from shared.bus import SignalBus
@@ -38,6 +39,14 @@ M4A4 = "M4A4 | Desolate Space (Field-Tested)"
 M4A1S = "M4A1-S | Decimator (Field-Tested)"
 
 
+def load_universe(config: Config) -> list[str]:
+    """The tracked item universe — currently the Phase-1 seed list."""
+    seed = REPO_ROOT / config.require("data.steam_history")["items_file"]
+    return sorted(
+        {line.strip() for line in seed.read_text().splitlines() if line.strip()}
+    )
+
+
 def build_stack(config: Config, posts_path: Path | None):
     store = SnapshotStore()
     bus = SignalBus()
@@ -47,13 +56,17 @@ def build_stack(config: Config, posts_path: Path | None):
         fill_volume_cap_k=config.require("position_sizing.volume_relative_k"),
     )
     ledger = Ledger(trade_lock_days=config.require("cooldown.trade_lock_days"))
+    gating = config.get("system_a.rules_gating", {}) or {}
     rules = RulesTable.load(
-        REPO_ROOT / config.require("system_a.rules_table_path")
+        REPO_ROOT / config.require("system_a.rules_table_path"),
+        disabled_rules=gating.get("disabled_rules", []),
     )
     gate = RiskGate(config, ledger)
     provenance = ProvenanceLog(REPO_ROOT / "var" / "provenance_a.jsonl")
+    universe = load_universe(config)
     engine = ReactiveEngine(
-        config, store, bus, backend, ledger, rules, gate, provenance
+        config, store, bus, backend, ledger, rules, gate, provenance,
+        universe=universe,
     )
     sources = [FileReplaySource(posts_path)] if posts_path else []
     monitor = MonitorAgent(
@@ -61,7 +74,7 @@ def build_stack(config: Config, posts_path: Path | None):
         classifier=KeywordClassifier(),
         bus=bus,
         allowlist=load_allowlist(REPO_ROOT / "config" / "monitor_allowlist.yaml"),
-        known_items=engine.tracked_items + list(rules.item_map),
+        known_items=universe + rules.weapons,
         corroboration_min_sources=config.require(
             "system_a.monitor.corroboration_min_sources"
         ),
@@ -122,6 +135,37 @@ def run_demo(config: Config) -> int:
     return run_replay(config, snapshots_path, posts_path)
 
 
+def run_poller(config: Config, max_cycles: int | None = None) -> int:
+    """Snapshot poller (Shared §2a.3): poll /v1/prices/latest on the refresh
+    cadence and persist every response forever — our own BUFF depth history
+    accumulates from day one; data not captured is lost permanently."""
+    poller = config.require("data.snapshot_poller")
+    if not poller.get("enabled"):
+        print("data.snapshot_poller.enabled is false")
+        return 1
+    tracked = load_universe(config)
+    feed = Cs2shFeed(tracked, config.require("fx.usd_cny_rate"))
+    store = SnapshotStore(REPO_ROOT / poller["db_path"])
+    interval = config.require("data.refresh_seconds")
+    print(f"polling {len(tracked)} items every {interval}s → {poller['db_path']}")
+    cycles = 0
+    while max_cycles is None or cycles < max_cycles:
+        try:
+            items = feed.fetch()
+        except FeedUnavailable as e:
+            print(f"feed unavailable: {e}")
+            return 1
+        store.insert(items, source="buff")
+        cycles += 1
+        print(
+            f"[{cycles}] {len(items)} items @ {items[0].ts if items else '-'}"
+            + (f"  api-errors: {len(feed.last_errors)}" if feed.last_errors else "")
+        )
+        if max_cycles is None or cycles < max_cycles:
+            time.sleep(interval)
+    return 0
+
+
 def run_live(config: Config) -> int:
     missing = [k for k in ("CS2SH_API_KEY",) if secret(k) is None]
     if missing:
@@ -161,8 +205,12 @@ def main(argv: list[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--demo", action="store_true")
     mode.add_argument("--replay", type=Path, metavar="SNAPSHOTS_JSONL")
+    mode.add_argument("--poll", action="store_true",
+                      help="snapshot poller: persist /v1/prices/latest forever")
     mode.add_argument("--live", action="store_true")
     parser.add_argument("--posts", type=Path, default=None)
+    parser.add_argument("--cycles", type=int, default=None,
+                        help="--poll only: stop after N polls (default: run forever)")
     args = parser.parse_args(argv)
 
     config = Config.load(REPO_ROOT, system="system_a")
@@ -170,6 +218,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_demo(config)
     if args.replay:
         return run_replay(config, args.replay, args.posts)
+    if args.poll:
+        return run_poller(config, args.cycles)
     return run_live(config)
 
 

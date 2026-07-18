@@ -34,7 +34,7 @@ from shared.schema import (
 from shared.store import SnapshotStore
 from system_a.break_detector import CusumDetector
 from system_a.risk import RiskGate
-from system_a.rules import RulesTable
+from system_a.rules import MappedCandidate, RulesTable
 
 ACTIONABLE_TYPES = (
     SignalType.UPDATE_LEAK,
@@ -55,6 +55,7 @@ class ReactiveEngine:
         rules: RulesTable,
         gate: RiskGate,
         provenance: ProvenanceLog,
+        universe: list[str],
     ):
         self.config = config
         self.store = store
@@ -72,9 +73,11 @@ class ReactiveEngine:
         ) if bd.get("enabled") else None
         self._ids = itertools.count()
         self._daily_realized_baseline: tuple[str, float] | None = None
-        self.tracked_items = sorted(
-            {item for items in rules.item_map.values() for item in items}
-        )
+        self.tracked_items = sorted(set(universe))
+        # Scheduled T+7 lock-expiry echoes (rules table: trade_up timing) —
+        # (due_ts, bearish item names, originating rule id).
+        self._scheduled_echoes: list[tuple[float, tuple[str, ...], str]] = []
+        self._alerted_watch_keys: set[str] = set()
 
     def _next_id(self, prefix: str) -> str:
         return f"a-{prefix}-{next(self._ids)}"
@@ -91,19 +94,89 @@ class ReactiveEngine:
 
         signals = self._actionable_signals(now_ts)
         self._blocklist_hyped_items(now_ts, regime)
+        self._log_watch_alerts(now_ts, regime)
 
         bearish_marks: set[str] = set()
         for signal in signals:
-            for candidate in self.rules.map_signal(signal):
-                if candidate.direction == Direction.BEARISH:
+            for candidate in self._map(signal, snapshot):
+                if not candidate.tradeable:
+                    # Low-confidence / disabled / data-gap rules never trade —
+                    # they are logged so the backtest can score them (§12).
+                    self._log(
+                        now_ts, "rule_log_only", candidate.market_hash_name,
+                        candidate.rule, regime, [_sig(signal)],
+                        inputs={"direction": candidate.direction.value,
+                                "confidence": candidate.confidence,
+                                "evidence": candidate.evidence},
+                    )
+                elif candidate.direction == Direction.BEARISH:
                     bearish_marks.add(candidate.market_hash_name)
                 else:
-                    self._try_buy(
-                        candidate.market_hash_name, candidate.rule, signal,
-                        snapshot, regime, now_ts,
-                    )
+                    self._try_buy(candidate, signal, snapshot, regime, now_ts)
+            self._maybe_schedule_echo(signal, snapshot, now_ts)
+        bearish_marks |= self._due_echo_marks(now_ts, regime)
         self._thesis_break_exits(bearish_marks, snapshot, regime, now_ts)
         self._bracket_exits(snapshot, regime, now_ts)
+
+    def _map(self, signal: Signal, snapshot: dict[str, Item]):
+        if signal.event_rule == "trade_up_pool_change":
+            prices = {
+                n: i.buff_lowest_sell_cny for n, i in snapshot.items()
+            }
+            gating = self.config.get("system_a.rules_gating", {}) or {}
+            return self.rules.map_trade_up_signal(
+                signal, self.tracked_items, prices,
+                gating.get("collections_with_gold", []),
+            )
+        return self.rules.map_signal(signal, self.tracked_items)
+
+    def _maybe_schedule_echo(
+        self, signal: Signal, snapshot: dict[str, Item], now_ts: float
+    ) -> None:
+        """Trade-up events echo at T+7 when crafted-item locks expire
+        (2025-10-22 → 2025-10-30: further 10–15% dip). Schedule the bearish
+        leg to re-fire then, so exits are planned around the second wave."""
+        if signal.event_rule != "trade_up_pool_change":
+            return
+        bearish = tuple(
+            c.market_hash_name for c in self._map(signal, snapshot)
+            if c.direction == Direction.BEARISH
+        )
+        if not bearish:
+            return
+        lock_days = self.config.require("cooldown.trade_lock_days")
+        due = signal.first_seen_ts + lock_days * 86400.0
+        if all(e[0] != due or e[1] != bearish for e in self._scheduled_echoes):
+            self._scheduled_echoes.append((due, bearish, "trade_up_lock_expiry_echo"))
+
+    def _due_echo_marks(self, now_ts: float, regime: Regime) -> set[str]:
+        marks: set[str] = set()
+        remaining = []
+        for due, items, rule in self._scheduled_echoes:
+            if due <= now_ts:
+                marks.update(items)
+                self._log(
+                    now_ts, "scheduled_echo_fired", None, rule, regime, [],
+                    inputs={"items": list(items), "scheduled_for": due},
+                )
+            else:
+                remaining.append((due, items, rule))
+        self._scheduled_echoes = remaining
+        return marks
+
+    def _log_watch_alerts(self, now_ts: float, regime: Regime) -> None:
+        """Keyword-watch signals (e.g. a Cache-collection announcement, which
+        would resolve the map_pool_change ambiguity) — surfaced, never traded."""
+        decay = self.config.require("system_a.monitor")["signal_decay_hours"]
+        for signal in self.bus.active([1, 2, 3], now_ts, decay):
+            if signal.type == SignalType.ATTENTION and signal.key() not in self._alerted_watch_keys:
+                self._alerted_watch_keys.add(signal.key())
+                self._log(
+                    now_ts, "watch_alert", None, "monitor_keyword_watch",
+                    regime, [_sig(signal)],
+                    inputs={"watched": list(signal.items),
+                            "event_rule": signal.event_rule},
+                )
 
     # ------------------------------------------------------------------ #
     def _safety_rails_ok(
@@ -196,13 +269,20 @@ class ReactiveEngine:
     # ------------------------------------------------------------------ #
     def _try_buy(
         self,
-        name: str,
-        mapping_rule: str,
+        candidate: MappedCandidate,
         signal: Signal,
         snapshot: dict[str, Item],
         regime: Regime,
         now_ts: float,
     ) -> None:
+        name = candidate.market_hash_name
+        # Rule provenance rides along on every outcome (Shared §12): which
+        # rule fired and how well-supported it was.
+        rule_inputs = {
+            "mapping_rule": candidate.rule,
+            "rule_confidence": candidate.confidence,
+            "rule_evidence": candidate.evidence,
+        }
         item = snapshot.get(name)
         if item is None:
             return
@@ -210,7 +290,7 @@ class ReactiveEngine:
         if confirmation_rule != "confirmed":
             self._log(
                 now_ts, "buy_refused", name, confirmation_rule, regime,
-                [_sig(signal)], inputs={"mapping_rule": mapping_rule},
+                [_sig(signal)], inputs=rule_inputs,
             )
             return
 
@@ -227,7 +307,7 @@ class ReactiveEngine:
         if not result.approved:
             self._log(
                 now_ts, "buy_refused", name, result.rule, regime, [_sig(signal)],
-                inputs={"mapping_rule": mapping_rule, "requested_qty": requested},
+                inputs={**rule_inputs, "requested_qty": requested},
             )
             return
         order = Order(self._next_id("buy"), OrderSide.BUY, name, result.qty, price)
@@ -235,8 +315,8 @@ class ReactiveEngine:
         if fill:
             self.ledger.record_buy(fill)
             self._log(
-                now_ts, "buy_placed", name, mapping_rule, regime, [_sig(signal)],
-                inputs={"qty": fill.qty, "price": fill.price_cny},
+                now_ts, "buy_placed", name, candidate.rule, regime, [_sig(signal)],
+                inputs={**rule_inputs, "qty": fill.qty, "price": fill.price_cny},
                 score=signal.confidence, order_id=order.client_order_id,
             )
 
@@ -246,9 +326,12 @@ class ReactiveEngine:
         look like once the event cools."""
         window = self.config.require("indicators")["volume_baseline_window"]
         history = self.store.series(name)[:-1]
-        if not history:
-            return None
-        volumes = sorted(i.buff_volume_24h for i in history[-window:])
+        volumes = sorted(
+            i.buff_volume_24h for i in history[-window:]
+            if i.buff_volume_24h is not None
+        )
+        if not volumes:
+            return None  # volume unavailable on this feed tier
         return float(volumes[len(volumes) // 2])
 
     def _confirm_right_side(self, name: str) -> str:
@@ -267,6 +350,11 @@ class ReactiveEngine:
             volume_high_ratio=indicator_config["volume_high_ratio"],
             volume_low_ratio=indicator_config["volume_low_ratio"],
         )
+        if state is None:
+            # Executed volume missing in the window (cs2.sh Developer tier):
+            # right-side confirmation genuinely cannot run — refuse rather
+            # than fake the pattern from listings (docs Shared §2a).
+            return "volume_data_unavailable"
         if confirmation["reject_price_up_volume_down"] and state.pattern == 4:
             return "weak_rally_pattern4"
         if confirmation["require_volume_and_price_up"] and state.pattern != 3:
@@ -322,7 +410,12 @@ class ReactiveEngine:
         # book can't take the whole lot this cycle, split and sell the slice
         # the depth cap allows; the remainder exits on later cycles.
         k = self.config.require("position_sizing.volume_relative_k")
-        depth_cap = max(1, int(k * item.buff_volume_24h))
+        sell_depth = (
+            item.buff_volume_24h
+            if item.buff_volume_24h is not None
+            else item.buff_buy_order_count   # volume-less tier: standing bids
+        )
+        depth_cap = max(1, int(k * sell_depth))
         if lot.qty > depth_cap:
             lot = self.ledger.split_lot(lot.lot_id, depth_cap)
             self._log(

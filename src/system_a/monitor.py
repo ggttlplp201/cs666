@@ -44,6 +44,7 @@ class Classification:
     items: tuple[str, ...]
     direction: Direction
     confidence: float    # 0..1 before corroboration weighting
+    event_rule: str | None = None   # rules-table event id, when attributable
 
 
 class SocialSource(Protocol):
@@ -92,6 +93,10 @@ _LEAK = re.compile(r"\b(leak\w*|datamin\w*|rumor|unannounced|upcoming)\b", re.I)
 _OFFICIAL = re.compile(r"\b(release notes|update is live|patch notes|shipped)\b", re.I)
 _HYPE = re.compile(r"\b(to the moon|100%|guaranteed|easy money|all[- ]?in|pump\w*)\b", re.I)
 _CS2 = re.compile(r"\b(cs2|counter-?strike|skin|case|knife|glove|valve)\b", re.I)
+_TRADE_UP = re.compile(r"\btrade[- ]?up\b|\bcontract\b", re.I)
+# Watch list: a Cache-collection announcement resolves the map_pool_change
+# ambiguity (rules table §2/§3) — alert, never trade.
+_WATCH = re.compile(r"\bcache\s+collection\b", re.I)
 
 
 class KeywordClassifier:
@@ -101,6 +106,11 @@ class KeywordClassifier:
         text = post.text
         if not _CS2.search(text):
             return None
+        if _WATCH.search(text):
+            return Classification(
+                SignalType.ATTENTION, ("Cache Collection",), Direction.UNCLEAR,
+                0.7, event_rule="map_pool_change",
+            )
         items = tuple(
             name for name in known_items
             if _item_pattern(name).search(text)
@@ -114,12 +124,20 @@ class KeywordClassifier:
             direction = Direction.BULLISH
         elif _BEARISH.search(text):
             direction = Direction.BEARISH
+        event_rule = (
+            "trade_up_pool_change" if _TRADE_UP.search(text)
+            else "weapon_balance_change"
+        )
         if _OFFICIAL.search(text):
             return Classification(
-                SignalType.OFFICIAL_ANNOUNCEMENT, items, direction, 0.9
+                SignalType.OFFICIAL_ANNOUNCEMENT, items, direction, 0.9,
+                event_rule=event_rule,
             )
         if _LEAK.search(text):
-            return Classification(SignalType.UPDATE_LEAK, items, direction, 0.6)
+            return Classification(
+                SignalType.UPDATE_LEAK, items, direction, 0.6,
+                event_rule=event_rule,
+            )
         return None
 
 
@@ -251,7 +269,11 @@ class MonitorAgent:
             for c in contributions.values():
                 confidence *= 1.0 - c
             confidence = 1.0 - confidence
-            tier = 2 if classification.type == SignalType.OFFICIAL_ANNOUNCEMENT else 1
+            tier = (
+                3 if classification.type == SignalType.ATTENTION
+                else 2 if classification.type == SignalType.OFFICIAL_ANNOUNCEMENT
+                else 1
+            )
             signal = Signal(
                 tier=tier,
                 type=classification.type,
@@ -260,6 +282,7 @@ class MonitorAgent:
                 confidence=round(confidence, 4),
                 first_seen_ts=first_ts,
                 sources=tuple(sorted(sources)),
+                event_rule=classification.event_rule,
             )
             self.bus.publish(signal)
             emitted.append(signal)

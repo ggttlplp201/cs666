@@ -58,12 +58,17 @@ class Harness:
         self.ledger = Ledger(
             trade_lock_days=self.config.require("cooldown.trade_lock_days")
         )
-        self.rules = RulesTable.load(REPO_ROOT / "config" / "rules_table_a.yaml")
+        gating = self.config.get("system_a.rules_gating", {}) or {}
+        self.rules = RulesTable.load(
+            REPO_ROOT / "config" / "rules_table_a.yaml",
+            disabled_rules=gating.get("disabled_rules", []),
+        )
         self.gate = RiskGate(self.config, self.ledger)
         self.provenance = ProvenanceLog(tmp_path / "prov.jsonl")
         self.engine = ReactiveEngine(
             self.config, self.store, self.bus, self.backend, self.ledger,
             self.rules, self.gate, self.provenance,
+            universe=[M4A4, M4A1S],
         )
 
     def cycle(self, now_ts):
@@ -74,18 +79,72 @@ class Harness:
         return [(r["action"], r["item"], r["rule"]) for r in self.provenance.read_all()]
 
 
+UNIVERSE = [M4A4, M4A1S]
+
+
+def _rules(disabled=("map_pool_change",)):
+    return RulesTable.load(
+        REPO_ROOT / "config" / "rules_table_a.yaml", disabled_rules=list(disabled)
+    )
+
+
 class TestRules:
     def test_nerf_maps_self_bearish_substitute_bullish(self):
-        rules = RulesTable.load(REPO_ROOT / "config" / "rules_table_a.yaml")
-        candidates = rules.map_signal(_leak(items=("M4A1-S",)))
+        candidates = _rules().map_signal(_leak(items=("M4A1-S",)), UNIVERSE)
         by_item = {c.market_hash_name: c for c in candidates}
         assert by_item[M4A1S].direction == Direction.BEARISH
         assert by_item[M4A4].direction == Direction.BULLISH
-        assert by_item[M4A4].rule == "rules_table.substitute_pair"
+        assert by_item[M4A4].rule == "substitute_pair:ct_rifle"
+        assert by_item[M4A4].confidence == "high" and by_item[M4A4].tradeable
+        assert "Desolate Space" in by_item[M4A4].evidence  # evidence preserved
 
     def test_unclear_direction_maps_nothing(self):
-        rules = RulesTable.load(REPO_ROOT / "config" / "rules_table_a.yaml")
-        assert rules.map_signal(_leak(direction=Direction.UNCLEAR)) == []
+        assert _rules().map_signal(_leak(direction=Direction.UNCLEAR), UNIVERSE) == []
+
+    def test_low_confidence_pair_is_log_only(self):
+        universe = ["AWP | Asiimov (Field-Tested)", "SSG 08 | Ghost Crusader (Field-Tested)"]
+        candidates = _rules().map_signal(_leak(items=("AWP",)), universe)
+        substitute = [c for c in candidates if c.rule == "substitute_pair:sniper"]
+        assert substitute and not substitute[0].tradeable  # low confidence → log only
+        self_side = [c for c in candidates if c.rule == "weapon_balance_change.self"]
+        assert self_side and self_side[0].tradeable
+
+    def test_both_sides_same_direction_no_substitution_trade(self):
+        # e.g. Mar 2026 hit SSG-08 AND AWP: same direction ⇒ self-maps only
+        universe = ["AWP | Asiimov (Field-Tested)"]
+        candidates = _rules().map_signal(
+            _leak(items=("AWP", "SSG 08")), universe
+        )
+        assert all(not c.rule.startswith("substitute_pair") for c in candidates)
+
+    def test_weapon_extracted_from_item_name(self):
+        candidates = _rules().map_signal(_leak(items=(M4A1S,)), UNIVERSE)
+        assert {c.market_hash_name for c in candidates} == {M4A4, M4A1S}
+
+    def test_disabled_rule_gates_tradeability(self):
+        rules = _rules(disabled=("weapon_balance_change",))
+        candidates = rules.map_signal(_leak(items=("M4A1-S",)), UNIVERSE)
+        assert candidates and all(not c.tradeable for c in candidates)
+
+    def test_trade_up_log_only_while_collection_map_missing(self):
+        rules = _rules()
+        signal = Signal(
+            tier=2, type=SignalType.CONFIRMED_UPDATE, items=(M4A4, M4A1S),
+            direction=Direction.BULLISH, confidence=1.0, first_seen_ts=T0,
+            event_rule="trade_up_pool_change",
+        )
+        candidates = rules.map_trade_up_signal(
+            signal, UNIVERSE, {M4A4: 100.0, M4A1S: 50.0}, collections_with_gold=[]
+        )
+        assert candidates and all(not c.tradeable for c in candidates)
+        assert "COLLECTION→GOLD MAP MISSING" in candidates[0].evidence
+        # cheap reds outrank expensive ones
+        assert candidates[0].market_hash_name == M4A1S
+
+    def test_calendar_rule_never_directional(self):
+        rules = _rules()
+        assert not rules.rule_tradeable("calendar_esports_event")
+        assert not rules.event_rules["calendar_esports_event"].directional
 
 
 class TestCusum:
@@ -159,7 +218,7 @@ class TestEngine:
         h.bus.publish(_leak(items=("M4A1-S",), ts=now - 3600))
         h.cycle(now)
         assert h.ledger.position_qty(M4A4) > 0
-        assert ("buy_placed", M4A4, "rules_table.substitute_pair") in h.actions()
+        assert ("buy_placed", M4A4, "substitute_pair:ct_rifle") in h.actions()
 
     def test_weak_rally_pattern4_refused(self, tmp_path):
         h = Harness(tmp_path)

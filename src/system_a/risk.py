@@ -76,8 +76,15 @@ class RiskGate:
             return GateResult(0, "regime_bear_non_structural")
 
         # Liquidity floor (§4.1 step 3 / Shared §4.3): must be exitable.
+        # On feeds without executed volume (cs2.sh Developer tier) the
+        # ≥min_daily_trades filter is NOT computable — never proxy it from
+        # listings. Default is to refuse (conservative); flip
+        # selection_filters.allow_unknown_volume to trade on depth alone.
         filters = self.config.require("selection_filters")
-        if item.buff_volume_24h < filters["min_daily_trades"]:
+        if item.buff_volume_24h is None:
+            if not filters.get("allow_unknown_volume", False):
+                return GateResult(0, "liquidity_unknown_data_gap")
+        elif item.buff_volume_24h < filters["min_daily_trades"]:
             return GateResult(0, "liquidity_floor")
         if item.buff_buy_order_count < filters["min_valid_buy_orders"]:
             return GateResult(0, "buy_order_floor")
@@ -98,7 +105,11 @@ class RiskGate:
         # print that will have normalized by unlock time.
         k = self.config.require("position_sizing.volume_relative_k")
         sizing_volume = item.buff_volume_24h
-        if baseline_volume_24h is not None:
+        if sizing_volume is None:
+            # No executed volume on this feed tier: the only guaranteed exit
+            # is the standing bids, so size against bid-side depth instead.
+            sizing_volume = item.buff_buy_order_count
+        elif baseline_volume_24h is not None:
             sizing_volume = min(sizing_volume, baseline_volume_24h)
         max_units_by_volume = int(k * sizing_volume)
         already_held = self.ledger.position_qty(item.market_hash_name)
