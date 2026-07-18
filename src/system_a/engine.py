@@ -404,19 +404,36 @@ class ReactiveEngine:
     def _bracket_exits(
         self, snapshot: dict[str, Item], regime: Regime, now_ts: float
     ) -> None:
+        """Position management (Shared §3 rhymes + §6.3 brackets) on every
+        sellable lot — each decision attributed to the specific rule so the
+        exit study can measure per-rule edge (Shared §12)."""
+        from system_a.position_manager import assess
+        pm = self.config.require("system_a.position_management")
+        indicators_cfg = self.config.require("indicators")
         brackets = self.config.require("brackets")
-        take_profit = brackets["take_profit_pct"][0]
-        stop_cut = brackets["stop_loss_cut_pct"]
         for name in self.tracked_items:
             item = snapshot.get(name)
             if item is None:
                 continue
+            series = self.store.series(name)
             for lot in self.ledger.sellable_lots(name, now_ts):
-                gross_return = item.buff_highest_buy_cny / lot.buy_price - 1
-                if gross_return >= take_profit:
-                    self._sell_lot(lot, snapshot, regime, now_ts, "take_profit")
-                elif gross_return <= stop_cut:
-                    self._sell_lot(lot, snapshot, regime, now_ts, "stop_loss")
+                result = assess(
+                    series, lot.buy_price,
+                    held_days=(now_ts - lot.buy_ts) / 86400.0,
+                    pm=pm, indicators_cfg=indicators_cfg, brackets=brackets,
+                )
+                inputs = {
+                    "detail": result.detail,
+                    "volume_rules_unavailable": list(result.unavailable_rules),
+                }
+                if result.action == "exit":
+                    self._sell_lot(lot, snapshot, regime, now_ts, result.rule)
+                elif result.action == "suppressed_exit" or result.rule != "no_signal":
+                    self._log(
+                        now_ts, f"{result.action}_signal" if result.action != "hold"
+                        else "hold_signal", name, result.rule, regime, [],
+                        inputs=inputs,
+                    )
 
     def _sell_lot(
         self,

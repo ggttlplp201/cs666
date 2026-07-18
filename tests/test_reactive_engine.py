@@ -277,7 +277,9 @@ class TestEngine:
         self._seed_lot(h, M4A4, buy_price=900.0, qty=2, buy_ts=now - 8 * DAY)
         h.cycle(now)
         assert h.ledger.position_qty(M4A4) == 0
-        assert ("sell_placed", M4A4, "take_profit") in h.actions()
+        # manager attributes this exit to the higher-priority §3.1 rule:
+        # upper-band touch + green (2x-volume up) bar → capital exiting
+        assert ("sell_placed", M4A4, "upper_band_green") in h.actions()
         assert h.ledger.realized_pnl() > 0
 
     def test_stop_loss_bracket_cuts_loser(self, tmp_path):
@@ -326,6 +328,7 @@ class TestPostEventSizingAndScaleOut:
         h.store.insert([_item(M4A4, 1040.0, volume=20, ts=now + 60)])
         h.cycle(now + 120)
         assert h.ledger.position_qty(M4A4) == 12  # sold 7
+        # low-volume follow-up bar is NOT a green bar → plain take_profit here
         assert ("sell_placed", M4A4, "take_profit") in h.actions()
         h.store.insert([_item(M4A4, 1040.0, volume=20, ts=now + DAY)])
         h.cycle(now + DAY + 60)

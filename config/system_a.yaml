@@ -34,6 +34,41 @@ break_detector:
   threshold_h: 5.0         # CUSUM alarm threshold (in std units)
   emitted_confidence: 0.75 # confidence of the MARKET_BREAK signal on the bus
 
+# --- Position management (Shared §3 "market rhymes" + §6.3, System A layer) ---
+# Every rule individually toggleable and individually attributed in provenance.
+# ⚠ Numeric thresholds are UNVALIDATED defaults — the docs give qualitative
+# rules ("large rise", "low volume") without numbers. The exit study measures
+# each rule's edge; do not treat these defaults as calibrated.
+position_management:
+  thesis_invalidation_days: 14   # exit if predicted repricing hasn't shown by day N
+  thesis_min_progress_pct: 0.0   # "shown" = price above entry by at least this
+  patient_exit:                  # exits list at the ask (System A exit isn't urgent)
+    grace_days: 5                # unfilled after grace → cross down to the bid
+  rules:                         # EXIT rules
+    stop_loss: true              # Shared §6.3 hard stop — overrides everything
+    take_profit: true            # Shared §6.3 +10–15%; note: truncates runners
+    surge_euphoria: true         # vertical surge → sell into strength
+    large_consecutive_rises: true
+    upper_band_green: true       # upper-band touch + green (high-vol up) bar
+    slow_decline_high_volume: true   # distribution → evacuate
+  hold_rules:                    # HOLD/suppress rules (attributed, not exits)
+    consecutive_small_rises: true
+    sharp_drop_low_volume: true  # shakeout — hold
+    upper_band_no_green: true    # riding the band — hold
+    big_crash_no_sell: true      # don't dump into a crash (suppresses TA exits,
+                                 # never the hard stop)
+  thresholds:                    # UNVALIDATED defaults (see header note)
+    surge_1d_pct: 0.07
+    surge_3d_pct: 0.12
+    small_rise_max_pct: 0.03
+    large_rise_day_pct: 0.05
+    crash_1d_pct: -0.10
+    sharp_drop_pct: -0.05
+    slow_decline_3d_band: [-0.10, -0.02]
+    upper_band_pct_b: 0.95
+    green_bar_volume_ratio: 1.5
+    low_volume_ratio: 0.7
+
 # --- Rules table (content supplied by Builder 1; file path here) --------------
 rules_table_path: config/rules_table_a.yaml   # substitute pairs, event rules, labeled events
 
