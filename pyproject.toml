@@ -20,6 +20,7 @@ dependencies = [
 ml = ["xgboost"]
 plot = ["matplotlib"]
 dev = ["pytest"]
+dashboard = ["streamlit"]   # read-only research dashboard (make dashboard)
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -86,6 +86,28 @@ to `var/provenance_a.jsonl`.
 
 ---
 
+## System A research dashboard (read-only)
+
+`make dashboard` → Streamlit on localhost. It cannot trade or change config.
+Each page answers one question:
+
+1. **Data health** — is the poller alive? Gaps in the series are loud (a
+   silently broken poller is the failure mode we care most about).
+2. **Live market** — current book per item: ask/bid, spread, depth, staleness.
+3. **Spread analysis** — what trading costs: spread distribution + the
+   spread-vs-liquidity relationship that killed reactive entry.
+4. **Rule scorecard** — per-rule out-of-sample results and current gating
+   (in-sample numbers are quarantined, never mixed in).
+5. **Event timeline** — every labeled event, prediction vs realized, plus the
+   live forward tests (2026-07-09 Cache/Armory).
+6. **Prediction log** — browsable provenance: which signals fired, which rule
+   decided, and why.
+
+A persistent banner shows the operating mode (LOG-ONLY), spend to date ($0),
+and how many rules are currently DO-NOT-TRADE.
+
+---
+
 ## Regenerating the PDFs
 
 The `.md` files are canonical; the PDFs in `docs/pdf/` are snapshots. After editing a doc, regenerate its PDF (e.g. `markdown` → HTML → `wkhtmltopdf`, or `pandoc`). Never edit the PDF directly.
