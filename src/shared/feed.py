@@ -124,6 +124,9 @@ class Cs2shFeed:
                 "Authorization": f"Bearer {api_key}",
                 "Accept-Encoding": "gzip",   # REQUIRED by the API
                 "Content-Type": "application/json",
+                # WAF blocks the default Python-urllib agent (curl passes) —
+                # identify honestly as our client instead.
+                "User-Agent": "cs2-quant/0.1",
             },
         )
         with urllib.request.urlopen(request, timeout=30) as resp:
