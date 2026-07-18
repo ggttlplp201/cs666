@@ -53,6 +53,42 @@ Before any item-level decision, classify the broad market. Regime sets the posit
 
 ---
 
+## 2a. Data layer: verified API facts, tier gaps & the phased data strategy
+
+> Added after live testing of the cs2.sh API (2026-07). This section is the
+> authority on what data we actually have; System-A §2 / System-B §2 defer to
+> it where they disagree. The full normalization schema stays in System-A §2.3.
+
+### 2a.1 cs2.sh — verified facts (Developer tier, $75/mo)
+
+- Base URL `https://api.cs2.sh`; auth `Authorization: Bearer <key>`; **`Accept-Encoding: gzip` is required on every /v1 request.**
+- `POST /v1/prices/latest` — up to **100 items/request** (body ≤ 1 MiB). A bad item name returns an `errors[]` entry, not a failed batch. GET (no body) dumps ALL tracked items — avoid.
+- Response shape `items[market_hash_name][source]`, sources `buff, youpin, csfloat, skinport, steam, c5game`. Verified BUFF fields: `ask` (lowest listing), `ask_volume` (**listing count**), `bid` (highest buy order), `bid_volume` (**buy-order count**).
+- Freshness = `collected_at` (cs2.sh's snapshot time). `updated_at` is the marketplace's own timestamp — **not** a freshness signal.
+- **⚠ Currency: everything is normalized to USD — including BUFF (which trades CNY).** The fee math, ledger, and capital are CNY; feed prices must be FX-converted (config `fx.usd_cny_rate`), never assumed CNY.
+- **⚠ `ask_volume` is NOT total supply (存世量).** It is the current listing count — a small fraction of supply. The §4.2 supply thresholds must never be evaluated against it; true `total_supply` requires `/v1/archive/history` (Scale tier).
+
+### 2a.2 Known gaps on the Developer tier
+
+Developer exposes **only** `/v1/prices/latest`; `/v1/market/buff/latest` and all history/archive endpoints are Scale ($200/mo). Consequences (code degrades explicitly — flags the gap, never proxies from listings):
+
+- **No executed volume for BUFF** → whale Signal 2 (§3.4, volume-up/price-flat) is *not computable*; the "≥10 genuine trades/day" mandatory filter (§4.3) is *not enforceable* (risk gate refuses buys by default — `selection_filters.allow_unknown_volume`); volume–price patterns (§3.3) are unavailable live.
+- **No float/fade ranges, no total_supply.**
+
+### 2a.3 Phased data strategy (experimental project — validate before spending)
+
+**PHASE 1 (now, ~$0)** — validate the premise:
+- **Backtest data = Steam Community Market price history (FREE).** `GET https://steamcommunity.com/market/pricehistory/?appid=730&market_hash_name=…` with a logged-in `steamLoginSecure` cookie. Daily **median price + quantity sold** (real executed volume) back to 2013 — the exact source of Pettersson's 640k-observation dataset (paper2, Appendix A2). Undocumented + rate-limited: polite polling, aggressive caching (`src/shared/steam_history.py`; rows stored `source="steam"`).
+  **Caveat:** Steam, not BUFF — trades ~30–40% above BUFF, median hides intraday. Good enough to test *the strategy premise* (do updates cause tradeable repricings? does MA-deviation momentum predict net of fees?); never a live-trading substitute.
+- **Live signals = cs2.sh Developer** via `/v1/prices/latest` (bid/ask + depth).
+- **Snapshot poller runs from day one:** poll `/v1/prices/latest` every 5–15 min and persist every response, forever (`data.snapshot_poller`). This accumulates our *own* BUFF depth history — data not captured is lost permanently.
+
+**PHASE 2 (only if Phase 1 shows an edge net of fees):**
+- **cs2.sh Scale ($200/mo) for ONE month** → bulk-download `/v1/archive/history` (BUFF `total_supply` + hourly volume back to 2023) and `/v1/liquidity/items` for our universe, store locally, downgrade — archive data is static; don't rent it monthly. Price-check alternatives first: CSPriceAPI, csmarketapi, SteamAnalyst (free tier + built-in price-manipulation flags, useful for the pump blocklist).
+- **BUFF execution API decision:** **Developer ¥300/mo (≈$42) is sufficient** — `POST /api/market/developer/purchase/orders` can take liquidity on standard items. Enterprise ¥1000 is only needed to snipe specific float-variant listings via `/api/market/enterprise/goods/sell_order`.
+
+---
+
 ## 3. Indicator library (the feature set)
 
 ### 3.1 Bollinger Bands
@@ -92,7 +128,7 @@ Compact rule from the selection section: **listings ↓ + volume ↑ = good; lis
 Three signals that a market maker is accumulating *before* a pump — buy *ahead*:
 
 1. **Sideways + shrinking volume (横盘缩量):** can't drop further, sellers exhausted, listings/float slowly decreasing → light float, low resistance to a pump.
-2. **Volume up, price flat (放量不涨):** executed volume spikes several× baseline but price barely moves → whale absorbing all sell orders while pacing to avoid tipping the price.
+2. **Volume up, price flat (放量不涨):** executed volume spikes several× baseline but price barely moves → whale absorbing all sell orders while pacing to avoid tipping the price. *(Data gap: not computable on the cs2.sh Developer tier — no executed volume; see §2a.2.)*
 3. **Against-the-trend resilience (逆势抗跌):** refuses to fall on bad news / broad-market drop → strong hidden bid absorbing supply; whoever holds most inventory defends the line.
 
 Multiple signals firing at once → high-priority watchlist. Not a guarantee; a win-rate improver.
@@ -109,6 +145,12 @@ Multiple signals firing at once → high-priority watchlist. Not a guarantee; a 
 5. **Aesthetics (颜值):** rank within weapon category; classic art styles (Howl / Poseidon / Boom lineage) carry a premium.
 
 ### 4.2 Supply tiers (reconciling the two ranges in the source)
+
+> ⚠ These are **total existing quantity (存世量)** thresholds — never evaluate
+> them against listing counts (`ask_volume`), which are a small fraction of
+> supply. True total supply needs the Scale-tier archive (§2a.2); until then
+> supply filters are a Phase-2 capability (config keys renamed `total_supply_*`).
+
 - **High-conviction "institutional-grade" pick (esp. Factory New):** ~**2,000–10,000** existing units is the sweet spot capital prefers (Hellhound ≈7,000).
 - **Broader safer-liquidity selection / quick-start:** **10,000–30,000** circulation.
 - **Hard exclude:** supply **> 50,000** (upside capped, too heavy to move).
@@ -219,7 +261,7 @@ The human "trading journal" becomes the system's **structured trade log + perfor
 - **[confirms §5] Fat tails (kurtosis >100).** The statistical "why" behind the notes' "survive, don't win big." Keep the **notes'** layers framework; this just justifies it. (Nikolaenko)
 - **[new] Steam sale seasonality.** Semi-annual liquidation dips in Steam sale windows. Notes (BUFF/China-centric) don't flag this — keep as secondary and verify it shows on BUFF before acting. (Nikolaenko)
 - **[new] Volatility is forecastable** via GARCH even when direction isn't → enables the sizing rule below. (Nikolaenko)
-- **Our edge is partly better data:** both papers were limited to 2 skins or Steam median-only; our BUFF volume + buy-order + listing-depth + float feed (cs2.sh) is richer than what either had.
+- **Our edge is partly better data:** both papers were limited to 2 skins or Steam median-only; our BUFF volume + buy-order + listing-depth + float feed (cs2.sh) is richer than what either had. *(Tier caveat, §2a: on the Developer tier only bid/ask + depth are live today — the volume/float/supply edge arrives with Scale in Phase 2, plus whatever our own snapshot poller has accumulated by then.)*
 
 **Volatility-targeted sizing [new — secondary]:** estimate conditional volatility per item (GARCH-style); scale position size *inversely* to forecast vol and place stops/targets in vol units. A paper-derived addition — layer it on top of (not instead of) the notes' layers framework (§5).
 

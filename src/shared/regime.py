@@ -36,10 +36,14 @@ def classify_regime(
         prices = [i.buff_lowest_sell_cny for i in hist]
         if bollinger(prices, breadth_window, bollinger_num_std).above_middle:
             above += 1
-        baseline = hist[-(breadth_window + 1):-1]
-        baseline_volume = sum(i.buff_volume_24h for i in baseline) / len(baseline)
-        if baseline_volume:
-            volume_ratios.append(hist[-1].buff_volume_24h / baseline_volume)
+        # Volume leg degrades to neutral when executed volume is unavailable
+        # (cs2.sh Developer tier) — breadth alone then drives the regime.
+        volumes = [i.buff_volume_24h for i in hist[-(breadth_window + 1):-1]]
+        latest_volume = hist[-1].buff_volume_24h
+        if latest_volume is not None and all(v is not None for v in volumes):
+            baseline_volume = sum(volumes) / len(volumes)
+            if baseline_volume:
+                volume_ratios.append(latest_volume / baseline_volume)
 
     breadth = above / len(usable)
     aggregate_volume_ratio = (

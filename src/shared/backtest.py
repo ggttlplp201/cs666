@@ -67,7 +67,12 @@ class BacktestContext:
         item = self.market.get(lot.market_hash_name)
         if item is None:
             return None
-        depth_cap = max(1, int(self._bt.backend.fill_volume_cap_k * item.buff_volume_24h))
+        sell_depth = (
+            item.buff_volume_24h
+            if item.buff_volume_24h is not None
+            else item.buff_buy_order_count   # volume-less tier: standing bids
+        )
+        depth_cap = max(1, int(self._bt.backend.fill_volume_cap_k * sell_depth))
         if lot.qty > depth_cap:
             return None
         limit = limit_price if limit_price is not None else item.buff_highest_buy_cny

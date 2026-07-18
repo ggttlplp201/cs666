@@ -8,6 +8,15 @@ meta:
   currency: CNY
   kill_switch: false          # true = halt ALL buying immediately
 
+# --- Currency / FX (docs Shared §2a) ------------------------------------------
+# cs2.sh normalizes ALL prices to USD — including BUFF, which trades in CNY.
+# The ledger, fees, and capital are CNY; the normalizer converts feed prices
+# USD→CNY at this rate. Never assume a feed price is CNY.
+fx:
+  feed_currency: USD          # what cs2.sh delivers
+  ledger_currency: CNY        # what the ledger/fees/capital are booked in
+  usd_cny_rate: 7.25          # static rate for now; TODO(Leon): live FX source
+
 # --- Costs & market mechanics -------------------------------------------------
 costs:
   buff_fee_pct: 0.025         # single-side BUFF fee (~2.5%)
@@ -42,13 +51,21 @@ brackets:
   average_down_in_bear: false
 
 # --- Selection hard filters (Shared §4.3) -------------------------------------
+# ⚠ total_supply_* thresholds are TOTAL EXISTING QUANTITY (存世量) — NOT the
+# feed's ask_volume, which is only the current LISTING COUNT (a small
+# fraction of supply). Never map these to listings. True total_supply needs
+# cs2.sh /v1/archive/history (Scale tier) — unavailable in Phase 1.
 selection_filters:
-  supply_sweet_spot: [2000, 10000]     # high-conviction / FN
-  supply_broad: [10000, 30000]         # safer-liquidity
-  supply_hard_exclude_above: 50000
+  total_supply_sweet_spot: [2000, 10000]     # high-conviction / FN
+  total_supply_broad: [10000, 30000]         # safer-liquidity
+  total_supply_hard_exclude_above: 50000
   case_price_min_cny: 80
   min_valid_buy_orders: 3
-  min_daily_trades: 10                 # 20–40 = healthy
+  min_daily_trades: 10                 # 20–40 = healthy; NOT enforceable on
+                                       # cs2.sh Developer tier (no executed volume)
+  allow_unknown_volume: false          # false = refuse buys when volume data is
+                                       # missing (conservative); true = trade on
+                                       # depth alone with bid-count sizing
 
 # --- Volatility-targeted sizing (Shared §11, paper-derived, secondary) --------
 volatility_targeting:
@@ -80,12 +97,28 @@ regime:
   bear_breadth_max: 0.35
   weak_volume_ratio_max: 0.50     # aggregate volume vs baseline ⇒ weak/low-liquidity
 
-# --- Data sources (keys in .env; names here) ----------------------------------
+# --- Data sources (keys in .env; names here) — phased strategy, Shared §2a ----
 data:
-  live_feed: cs2.sh                    # BUFF volume/buy-orders/float; CS2SH_API_KEY in .env
-  history_feed: csmarketapi            # or pricempire; HISTORY_API_KEY in .env
+  phase: 1                             # 1 = free validation; 2 = paid history/archive
+  live_feed: cs2.sh                    # CS2SH_API_KEY in .env
+  live_feed_tier: developer            # ONLY /v1/prices/latest: bid/ask + depth.
+                                       # NO executed volume / float / total_supply
+                                       # (those are Scale tier — Phase 2 decision)
+  history_feed: steam_pricehistory     # Phase 1: FREE Steam daily median + qty sold
+                                       # (STEAM_LOGIN_SECURE cookie in .env).
+                                       # Phase 2 candidates: cs2.sh Scale archive,
+                                       # CSPriceAPI, csmarketapi, SteamAnalyst.
   refresh_seconds: 300
   pause_trading_on_stale_or_divergent: true
+  snapshot_poller:                     # poll /v1/prices/latest and persist forever —
+    enabled: true                      # accumulates our own BUFF depth history from
+    db_path: var/market.db             # day one; data not captured is lost permanently
+  steam_history:                       # Phase-1 backtest ingestion (src/shared/steam_history.py)
+    items_file: config/steam_backtest_items.txt
+    cache_dir: var/steam_history
+    request_gap_seconds: 4.0           # Steam 429s aggressively; be polite
+    backoff_start_seconds: 60.0        # exponential from here on 429, max 5 retries
+    source_tag: steam                  # store rows tagged so Steam never mixes with BUFF
 
 # --- Execution (path chosen in HANDOFF; credentials in .env) ------------------
 execution:

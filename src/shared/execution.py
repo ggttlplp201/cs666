@@ -38,8 +38,17 @@ class PaperBackend:
         """Called once per cycle with the latest normalized snapshot."""
         self._market = snapshot
 
-    def _depth_cap(self, item: Item) -> int:
-        return max(1, int(self.fill_volume_cap_k * item.buff_volume_24h))
+    def _depth_cap(self, item: Item, side: OrderSide) -> int:
+        """Fill cap per cycle. With executed volume unavailable (cs2.sh
+        Developer tier) fall back to the visible book: listings bound what a
+        buy can sweep, standing bids bound what a sell can hit."""
+        if item.buff_volume_24h is not None:
+            base = item.buff_volume_24h
+        elif side == OrderSide.BUY:
+            base = item.buff_listing_count
+        else:
+            base = item.buff_buy_order_count
+        return max(1, int(self.fill_volume_cap_k * base))
 
     def place_buy(self, order: Order) -> Fill | None:
         if order.client_order_id in self._fills_by_order:
@@ -47,7 +56,7 @@ class PaperBackend:
         item = self._market.get(order.market_hash_name)
         fill: Fill | None = None
         if item is not None and order.limit_price_cny >= item.buff_lowest_sell_cny:
-            qty = min(order.qty, self._depth_cap(item))
+            qty = min(order.qty, self._depth_cap(item, OrderSide.BUY))
             cost = qty * item.buff_lowest_sell_cny
             if qty > 0 and cost <= self.wallet:
                 self.wallet -= cost  # buyer pays no fee on BUFF; seller side pays
@@ -73,7 +82,7 @@ class PaperBackend:
             and held > 0
             and order.limit_price_cny <= item.buff_highest_buy_cny
         ):
-            qty = min(order.qty, held, self._depth_cap(item))
+            qty = min(order.qty, held, self._depth_cap(item, OrderSide.SELL))
             if qty > 0:
                 gross = qty * item.buff_highest_buy_cny
                 fee = gross * self.fee_pct

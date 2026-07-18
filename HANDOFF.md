@@ -11,10 +11,11 @@ Legend: ☐ = to provide · 🔑 = secret (goes in `.env`, never in docs/config/
 **Context / grounding**
 - ☐ Point Claude Code at the repo root so it reads `docs/` + `research/` first (no need to re-explain the market).
 
-**Data access**
-- ☐ 🔑 `cs2.sh` API key — live BUFF feed (prices, buy orders, volume, float).
-- ☐ 🔑 `csmarketapi` **or** `pricempire` key — historical series for backtesting.
-- ☐ Confirm cs2.sh's actual field names so the normalization schema (Shared §2.3) maps correctly.
+**Data access** *(updated after live API testing — see Shared §2a)*
+- ☑ 🔑 `cs2.sh` API key (Developer tier) — bid/ask + depth counts via `/v1/prices/latest`, USD-normalized. Volume/float/archive are Scale tier (Phase 2).
+- ☐ 🔑 `STEAM_LOGIN_SECURE` cookie — free Phase-1 backtest history (daily median + quantity sold).
+- ☐ (Phase 2 only, gated on backtest edge) paid history: cs2.sh Scale one-month bulk download / CSPriceAPI / csmarketapi / SteamAnalyst.
+- ☑ cs2.sh field names verified: `buff.ask/ask_volume/bid/bid_volume`, freshness = `collected_at`.
 
 **BUFF execution path (the biggest unblock — without it, everything builds *except* order placement)**
 - ☐ Decide: **Option A** official BUFF/NetEase API (Chinese account, ~$150/mo) **or Option B** unofficial session automation.

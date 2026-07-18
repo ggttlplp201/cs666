@@ -3,6 +3,11 @@
 Persists normalized Item snapshots so detectors have history to subtract
 against (docs/System-A §2.3). SQLite keeps paper mode dependency-free; the
 schema is flat enough to lift into Timescale/Postgres later.
+
+Every row carries a `source` tag ("buff" for the live cs2.sh feed, "steam"
+for the Phase-1 Steam price-history backfill — docs Shared §2a). Reads
+default to source="buff" so Steam data can never silently leak into live
+BUFF signals; backtest code opts into source="steam" explicitly.
 """
 
 from __future__ import annotations
@@ -12,6 +17,8 @@ from pathlib import Path
 
 from shared.schema import Item
 
+DEFAULT_SOURCE = "buff"
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS snapshots (
     market_hash_name TEXT NOT NULL,
@@ -20,9 +27,10 @@ CREATE TABLE IF NOT EXISTS snapshots (
     highest_buy REAL NOT NULL,
     listing_count INTEGER NOT NULL,
     buy_order_count INTEGER NOT NULL,
-    volume_24h INTEGER NOT NULL,
+    volume_24h INTEGER,
     variant TEXT,
-    PRIMARY KEY (market_hash_name, ts)
+    source TEXT NOT NULL DEFAULT 'buff',
+    PRIMARY KEY (market_hash_name, ts, source)
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_ts ON snapshots (ts);
 """
@@ -33,45 +41,60 @@ class SnapshotStore:
         self.conn = sqlite3.connect(str(path))
         self.conn.executescript(_SCHEMA)
 
-    def insert(self, items: list[Item]) -> None:
+    def insert(self, items: list[Item], source: str = DEFAULT_SOURCE) -> None:
         self.conn.executemany(
-            "INSERT OR REPLACE INTO snapshots VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO snapshots VALUES (?,?,?,?,?,?,?,?,?)",
             [
                 (
                     i.market_hash_name, i.ts, i.buff_lowest_sell_cny,
                     i.buff_highest_buy_cny, i.buff_listing_count,
-                    i.buff_buy_order_count, i.buff_volume_24h, i.variant,
+                    i.buff_buy_order_count, i.buff_volume_24h, i.variant, source,
                 )
                 for i in items
             ],
         )
         self.conn.commit()
 
-    def series(self, name: str, since_ts: float = 0.0) -> list[Item]:
+    def series(
+        self, name: str, since_ts: float = 0.0, source: str = DEFAULT_SOURCE
+    ) -> list[Item]:
         rows = self.conn.execute(
-            "SELECT * FROM snapshots WHERE market_hash_name = ? AND ts >= ? ORDER BY ts",
-            (name, since_ts),
+            "SELECT * FROM snapshots WHERE market_hash_name = ? AND ts >= ?"
+            " AND source = ? ORDER BY ts",
+            (name, since_ts, source),
         ).fetchall()
         return [_row_to_item(r) for r in rows]
 
-    def latest(self) -> dict[str, Item]:
+    def latest(self, source: str = DEFAULT_SOURCE) -> dict[str, Item]:
         rows = self.conn.execute(
             """SELECT s.* FROM snapshots s
                JOIN (SELECT market_hash_name, MAX(ts) AS mts FROM snapshots
-                     GROUP BY market_hash_name) m
-               ON s.market_hash_name = m.market_hash_name AND s.ts = m.mts"""
+                     WHERE source = ? GROUP BY market_hash_name) m
+               ON s.market_hash_name = m.market_hash_name AND s.ts = m.mts
+               WHERE s.source = ?""",
+            (source, source),
         ).fetchall()
         return {r[0]: _row_to_item(r) for r in rows}
 
-    def last_ts(self) -> float | None:
-        row = self.conn.execute("SELECT MAX(ts) FROM snapshots").fetchone()
+    def last_ts(self, source: str = DEFAULT_SOURCE) -> float | None:
+        row = self.conn.execute(
+            "SELECT MAX(ts) FROM snapshots WHERE source = ?", (source,)
+        ).fetchone()
         return row[0]
 
-    def is_stale(self, now_ts: float, max_age_seconds: float) -> bool:
+    def is_stale(
+        self, now_ts: float, max_age_seconds: float, source: str = DEFAULT_SOURCE
+    ) -> bool:
         """True when there is no data or the newest snapshot is too old —
         callers must pause trading (config: data.pause_trading_on_stale_or_divergent)."""
-        last = self.last_ts()
+        last = self.last_ts(source)
         return last is None or (now_ts - last) > max_age_seconds
+
+    def counts_by_source(self) -> dict[str, int]:
+        rows = self.conn.execute(
+            "SELECT source, COUNT(*) FROM snapshots GROUP BY source"
+        ).fetchall()
+        return dict(rows)
 
 
 def _row_to_item(row: tuple) -> Item:

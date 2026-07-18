@@ -18,7 +18,8 @@ class Item:
     buff_highest_buy_cny: float
     buff_listing_count: int      # sell-side depth proxy
     buff_buy_order_count: int    # bid-side depth proxy (valid buy orders)
-    buff_volume_24h: int         # executed trades, NOT listings
+    buff_volume_24h: int | None  # executed trades, NOT listings; None when the
+                                 # feed tier can't provide it (cs2.sh Developer)
     ts: float                    # snapshot time, unix UTC
     variant: str | None = None   # wear / Doppler phase / fade %
     float_range: tuple[float, float] | None = None
@@ -50,7 +51,9 @@ class Signal:
     first_seen_ts: float
     sources: tuple[str, ...] = ()
     attention_score: float | None = None  # Tier 3 only
-    sentiment: float | None = None        # Tier 3 only, -1..1
+    sentiment: float | None = None        # Tier 3 only
+    event_rule: str | None = None         # rules-table event_rules id, when the
+                                          # classifier could attribute one, -1..1
 
     def key(self) -> str:
         """Dedup key: same type + item set counts as the same event."""

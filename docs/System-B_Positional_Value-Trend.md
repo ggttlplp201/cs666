@@ -26,6 +26,13 @@ Most items are mispriced slowly, not instantly. A "good" item — right supply o
 The pricing providers give you *what to buy*; they do **not** place orders. Automated execution is a separate layer (§6). See System A §2 for the full write-up — same conclusion applies.
 
 ### 2.2 Provider recommendation
+
+> ⚠ **Tier caveat (Shared §2a, verified 2026-07):** the bullets below describe
+> cs2.sh's *Scale* tier. Our current Developer tier has bid/ask + depth counts
+> only, USD-normalized — no executed volume, float, or archive. System B's
+> volume-dependent factors (circulation, Signal 2) are Phase-2 capabilities;
+> Phase-1 backtesting uses the free Steam pricehistory source instead.
+
 Same stack as System A:
 - **Primary live feed: cs2.sh (SELECTED)** — native BUFF listing prices, buy orders, volume every few minutes, float/fade ranges, OHLC (5m–1d), 3+ yr archive. Critical here because *every* System B factor needs volume/depth/float, not just price.
 - **History/backtest: csmarketapi** (11+ yr sales history, 10+ markets, item metadata, no Steam rate limits) — *verify it exposes BUFF per-item volume + listing counts + buy orders before relying on it for signals*; otherwise use it purely for the long historical series. **pricempire** (5 yr, 56 markets) is an equally good history source.

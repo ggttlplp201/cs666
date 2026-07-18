@@ -29,12 +29,12 @@ Every provider below returns *prices/volume/history*. **None of them place order
 
 ### 2.2 Provider recommendation (ranked for a BUFF-primary strategy)
 
-1. **cs2.sh — SELECTED primary live feed.** It natively collects BUFF *listing prices, buy orders, and volume every few minutes*, plus float/fade ranges per item and per variant, builds OHLC at 5m/30m/1h/1d, and keeps a 3+ year archive. This is the only tier of data that lets you compute the volume/depth signals both systems need — not just a single median price.
+1. **cs2.sh — SELECTED primary live feed** *(verified 2026-07 — see Shared §2a for the authoritative facts)*. On our **Developer tier ($75/mo)** it provides `/v1/prices/latest` only: BUFF bid/ask + listing & buy-order **counts**, USD-normalized (convert to CNY via config `fx`). Executed volume, float/fade ranges, OHLC history, and the 3-year archive are **Scale tier ($200/mo)** — a Phase-2 purchase, made once, bulk-downloaded, then downgraded. Until then the volume-dependent signals degrade explicitly (Shared §2a.2) and our own snapshot poller builds depth history from day one.
 2. **csmarketapi (the one you flagged) — good, especially for history.** Advertises 11+ years of sales history, 10+ markets, item metadata, and no Steam rate limits. Strong for deep backtests and cross-market context. **Action item before committing:** confirm its BUFF endpoints expose *per-item trade volume + listing counts + highest buy order*, not just lowest sell price. If it only gives price, it's a history/backup source, not your live signal source.
 3. **pricempire** — ~5 years history, 56 markets, mature tooling. Good backtest/backup.
 4. **cspriceapi / steamwebapi** — normalized multi-market JSON (BUFF, YouPin, Skinport, CSFloat…), buy orders, per-phase Doppler pricing. Good redundancy and cross-market divergence signals.
 
-**Recommended setup:** `cs2.sh` as the live BUFF feed (native volume/depth/float) + `csmarketapi` *or* `pricempire` for the long historical series used in backtesting. Put a thin normalization layer in front so no single vendor is load-bearing — see §2.3.
+**Recommended setup (Phase 1, ~$0 — Shared §2a.3):** `cs2.sh` Developer as the live feed + the **free Steam pricehistory endpoint** (daily median + real quantity sold, `steamLoginSecure` cookie) for backtests — paid history feeds (csmarketapi / pricempire / cs2.sh Scale) are a Phase-2 decision gated on the backtest showing an edge net of fees. Put a thin normalization layer in front so no single vendor is load-bearing — see §2.3.
 
 ### 2.3 Normalization schema (write this once, both systems import it)
 
@@ -44,16 +44,19 @@ Every source maps to a common record:
 Item {
   market_hash_name        // canonical, matches Steam naming exactly
   variant                 // wear / Doppler phase / fade %  (nullable)
-  buff_lowest_sell_cny
-  buff_highest_buy_cny
-  buff_listing_count      // sell-side depth proxy
-  buff_buy_order_count    // bid-side depth proxy
-  buff_volume_24h         // executed trades, NOT listings
-  float_range             // if available
-  ts                      // snapshot time (UTC)
-  cross_market: { steam_usd, youpin_cny, skinport_usd, ... }
+  buff_lowest_sell_cny    // cs2.sh delivers USD — converted via config fx.usd_cny_rate
+  buff_highest_buy_cny    // (never assume feed prices are CNY — Shared §2a.1)
+  buff_listing_count      // sell-side depth proxy (cs2.sh: buff.ask_volume)
+  buff_buy_order_count    // bid-side depth proxy (cs2.sh: buff.bid_volume)
+  buff_volume_24h         // executed trades, NOT listings; null on Developer tier
+  float_range             // if available (Scale tier only)
+  ts                      // snapshot time (UTC) — from cs2.sh collected_at, the
+                          // freshness field (updated_at is the venue's clock, not ours)
+  cross_market: { youpin, csfloat, skinport, steam, c5game }   // asks, USD
 }
 ```
+
+Rows persist with a `source` tag (`buff` live feed / `steam` Phase-1 history) so Steam backtest data can never leak into live BUFF signals.
 
 Persist snapshots to a time-series store (Timescale/Influx/Postgres). You need history for backtests and for the baselines the detectors in §4 subtract against.
 
@@ -138,7 +141,7 @@ Track every lot with `unlock_time = buy_time + 7d`. The scheduler cannot even *c
 
 Your goal is **fully automated, no human in the loop**. Honest breakdown of what that requires on BUFF, because the data API does *not* provide it:
 
-- **Option A — Official BUFF/NetEase API.** Sanctioned path. Costs ~$150/month and is gated to Chinese accounts. If you can operate a legitimate Chinese account, this is by far the most stable route to automated order placement and the one least likely to get nuked.
+- **Option A — Official BUFF/NetEase API.** Sanctioned path, gated to Chinese accounts. **Tier decision (verified 2026-07): Developer ¥300/mo (≈$42) is sufficient** — `POST /api/market/developer/purchase/orders` can take liquidity on standard items. Enterprise ¥1000/mo is only needed to snipe specific float-variant listings via `/api/market/enterprise/goods/sell_order`. If you can operate a legitimate Chinese account, this is by far the most stable route to automated order placement and the one least likely to get nuked.
 - **Option B — Unofficial session automation.** Authenticated session cookies + BUFF's internal buy/sell endpoints (open-source `buff163` buyer projects exist as references). This *works* and is how many of the bot accounts you've seen operate, **but**: it violates BUFF's ToS, BUFF actively invalidates sessions and blocks IPs, you'll fight Cloudflare/anti-bot and rate limits, and account/inventory/wallet bans are a live risk. If you go this way, isolate capital, expect to lose accounts, and build session-refresh + backoff from day one.
 
 **Recommendation:** pursue Option A if a Chinese account is feasible; otherwise treat Option B as high-risk infrastructure with strict capital isolation. Either way, build the execution layer behind an interface (`place_buy`, `place_sell`, `get_inventory`, `get_wallet`) so the strategy code is decoupled from the (fragile) execution backend.

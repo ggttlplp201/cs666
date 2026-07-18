@@ -67,11 +67,18 @@ def volume_price_state(
     flat_price_pct: float,
     volume_high_ratio: float,
     volume_low_ratio: float,
-) -> VolumePriceState:
+) -> VolumePriceState | None:
+    """Returns None when executed volume is unavailable in the window (e.g.
+    cs2.sh Developer tier) — volume patterns must NOT be inferred from
+    listing counts; callers treat None as 'signal unavailable'."""
     if len(series) < 2:
         raise ValueError("need >= 2 snapshots")
     latest, prev = series[-1], series[-2]
     baseline = series[-(baseline_window + 1):-1]
+    if latest.buff_volume_24h is None or any(
+        i.buff_volume_24h is None for i in baseline
+    ):
+        return None
     baseline_volume = sum(i.buff_volume_24h for i in baseline) / len(baseline)
     volume_ratio = (
         latest.buff_volume_24h / baseline_volume if baseline_volume else 1.0
