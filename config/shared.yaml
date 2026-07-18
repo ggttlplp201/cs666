@@ -10,10 +10,16 @@ meta:
 
 # --- Costs & market mechanics -------------------------------------------------
 costs:
-  buff_fee_pct: 0.025         # single-side BUFF fee (~2.5%)
+  buff_fee_pct: 0.015         # BUFF CS2 sell fee CUT 2.5%->1.5% on 2026-04-14 (buff.163.com/news/87397)
+  buy_fee_pct: 0.0            # buyer pays listed price (no buyer fee)
+  withdrawal_fee_pct: 0.01    # 1% on cash-out (not per-trade); cap raised to 50k CNY/withdrawal
   model_round_trip_fees: true # always deduct fees before calling a trade profitable
 cooldown:
-  trade_lock_days: 7          # T+7 — hard constraint; blocks adds/exits before unlock
+  trade_lock_days: 7          # T+7 Valve-side item lock — blocks re-list/sell before unlock
+  settlement_days: 7          # BUFF releases SELLER FUNDS only after the 7d Trade Protection
+                              # window (since 2025-07-16) — sale proceeds are receivables, not cash
+  # note: since ~mid-June 2026 unlocks roll exactly 168h after purchase (no more
+  # synchronized daily unlock wave at 15:00 UTC+8)
 
 # --- Capital & exposure -------------------------------------------------------
 capital:
@@ -55,21 +61,32 @@ volatility_targeting:
   enabled: true
   method: garch_1_1
   size_inverse_to_vol: true            # smaller size when forecast vol high
+  target_daily_vol: 0.02               # scale = target / forecast (clamped 0.25-1.5)
 
 # --- Manipulation / blocklist (Shared §8) -------------------------------------
 risk_controls:
   blocklist: []               # item hashes to never buy (late-stage pumps)
   allowlist: []               # optional hard-include
-  daily_loss_limit_pct: -0.05 # trips kill_switch
+  daily_loss_limit_pct: -0.05 # trips the loss-limit latch (halts new buys)
   weekly_loss_limit_pct: -0.10
-  revenue_cooldown_after_stop_days: 3  # no revenge-trading same item
+  halt_days_after_loss_limit: 5        # tripped limit LATCHES this many days
+  revenue_cooldown_after_stop_days: 3  # no revenge-trading same item (applies to adds too)
 
 # --- Data sources (keys in .env; names here) ----------------------------------
+# Vendor due diligence 2026-07-17 (docs/System-B_Research-Notes.md §3):
+#  - cs2.sh: BUFF bid/ask + book counts (ask/bid_volume) at ~5min, float ranges,
+#    archive since 2023 w/ total_supply; NO BUFF executed-trade field (volume is
+#    proxied from archive aggregate.hourly_volume) — USD only.
+#  - csmarketapi DISQUALIFIED for BUFF163 (its enum has buff.market, not buff.cn).
+#  - pricempire: the BUFF163 daily price backbone (buff163 + buff163_buy),
+#    Enterprise tier, PRICE ONLY — volume/listings history must be self-collected.
 data:
-  live_feed: cs2.sh                    # BUFF volume/buy-orders/float; CS2SH_API_KEY in .env
-  history_feed: csmarketapi            # or pricempire; HISTORY_API_KEY in .env
+  live_feed: cs2.sh                    # CS2SH_API_KEY in .env
+  history_feed: pricempire             # HISTORY_API_KEY in .env (csmarketapi has NO buff163)
   refresh_seconds: 300
   pause_trading_on_stale_or_divergent: true
+  collect_snapshots: true              # self-collect daily listings/bids/volume forward
+                                       # (no vendor sells BUFF volume history)
 
 # --- Execution (path chosen in HANDOFF; credentials in .env) ------------------
 execution:
@@ -77,3 +94,5 @@ execution:
   paper_mode: true             # START HERE — flip to false only after go-live gate
   idempotent_order_ids: true
   reconcile_every_cycle: true
+  slippage_pct: 0.005          # paper-fill slippage inside the limit bound
+  fill_fraction: 0.25          # max share of one day's executed volume we can fill

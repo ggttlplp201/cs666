@@ -1,0 +1,142 @@
+# config/universe_b.yaml — System B scoring universe (HANDOFF §B)
+#
+# Seeded from the crash-course item lists (research/crash course.txt §9, §15),
+# with Chinese nicknames RESOLVED to canonical market_hash_names by web research
+# on 2026-07-17 (docs/System-B_Research-Notes.md §5). Prices/supply are that
+# day's approximations — the live feed refreshes them; they are NOT signals.
+#
+# aesthetics: 0..1, HUMAN-SUPPLIED (Builder 2) rank within weapon category —
+# the one factor a model can't infer. Current values are provisional seeds
+# derived from the crash course's own comments; re-score before go-live.
+#
+# rerelease_risk: probability-ish that the supply cap breaks. NOTE (research):
+# the Armory has NEVER re-released an old collection — it mints new ones and
+# retires them. Risk kept small-but-nonzero for operation collections since
+# Valve never ruled a return out.
+#
+# EXCLUDED pending confirmation (do not trade unresolved names):
+#   - "Blackberry" (黑莓) — unresolvable; possibly Glock-18 | Neo-Noir. Ask course author.
+#   - "Emerald" (绿宝石) — ambiguous (Glock Gamma Doppler Emerald vs knife phases).
+#   - AK-47 | Fire Serpent — resolved, but FT ≈ ¥5,300 sits above the mid-tier
+#     band and its book is thin relative to our caps; revisit with more capital.
+
+items:
+  # ---- crash-course §9 mid-tier picks (post-Oct-2025-crash prices) ----------
+  - market_hash_name: "M4A1-S | Mecha Industries (Minimal Wear)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    collection: Gamma Case
+    source_status: retired          # rare-drop pool only
+    rerelease_risk: 0.05
+    case_price_cny: 90              # Gamma Case; verify live
+    supply: 18000                   # rough MW-tier estimate; refresh from feed
+    aesthetics: 0.75
+    is_primary: true
+    substitute: "M4A4 | Spider Lily (Factory New)"
+    notes: "机械工业; course entry 1750/adds 1550/1100; ~¥780 as of 2026-07"
+
+  - market_hash_name: "M4A1-S | Chantico's Fire (Minimal Wear)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    collection: Chroma 3 Case
+    source_status: retired
+    rerelease_risk: 0.05
+    case_price_cny: 85
+    supply: 12000
+    aesthetics: 0.7
+    is_primary: true
+    notes: "女火神(之炽焰) = female fire goddess Chantico — NOT a Vulcan variant; ~¥800 2026-07; 259 listings"
+
+  - market_hash_name: "M4A4 | Spider Lily (Factory New)"
+    weapon: M4A4
+    category: mid_tier_primary
+    collection: Operation Riptide Case
+    source_status: retired
+    rerelease_risk: 0.1
+    case_price_cny: 80
+    supply: 15000
+    aesthetics: 0.7
+    is_primary: true
+    notes: "彼岸花 (red spider lily), Restricted; ~¥575 2026-07; 232 listings"
+
+  - market_hash_name: "AK-47 | Neon Revolution (Factory New)"
+    weapon: AK-47
+    category: mid_tier_primary
+    collection: Gamma 2 Case
+    source_status: retired
+    rerelease_risk: 0.05
+    case_price_cny: 85
+    supply: 9000
+    aesthetics: 0.8
+    is_primary: true
+    notes: "霓虹革命; FN ≈ ¥1,730 (the only wear still in the 1000-3000 band post-crash)"
+
+  - market_hash_name: "M4A4 | In Living Color (Factory New)"
+    weapon: M4A4
+    category: mid_tier_primary
+    collection: Snakebite Case
+    source_status: active           # Snakebite still dropping — weakest supply outlook here
+    rerelease_risk: 0.0
+    case_price_cny: 20              # cheap active case -> FAILS the ≥80 CNY gate (kept for tracking)
+    supply: 25000
+    aesthetics: 0.75
+    is_primary: true
+    notes: "活色生香; ~¥755 2026-07; active drop = supply keeps inflating"
+
+  - market_hash_name: "Glock-18 | Wasteland Rebel (Minimal Wear)"
+    weapon: Glock-18
+    category: mid_tier_primary
+    collection: Gamma Case
+    source_status: retired
+    rerelease_risk: 0.05
+    case_price_cny: 90
+    supply: 10000
+    aesthetics: 0.65
+    is_primary: true
+    notes: "the 'Gamma Glock' (only Glock in Gamma Case); ~¥780 2026-07; 98 listings"
+
+  # ---- crash-course collection watchlist ------------------------------------
+  - market_hash_name: "Desert Eagle | Fennec Fox (Minimal Wear)"
+    weapon: Desert Eagle
+    category: collection
+    collection: The 2021 Mirage Collection
+    source_status: discontinued     # fixed supply since Feb 2022
+    rerelease_risk: 0.1
+    case_price_cny: 999             # operation collection, no case; treated as expensive source
+    supply: 8000
+    aesthetics: 0.8
+    is_primary: false
+    notes: "沙漠之狐 (official CN name); MW ≈ ¥1,600, FT ≈ ¥1,250 2026-07"
+
+  - market_hash_name: "M4A1-S | Icarus Fell (Factory New)"
+    weapon: M4A1-S
+    category: collection
+    collection: The Gods and Monsters Collection
+    source_status: discontinued
+    rerelease_risk: 0.1
+    case_price_cny: 999
+    supply: 7000                    # float capped 0.00-0.10; FN is the traded tier
+    aesthetics: 0.85
+    is_primary: true
+    notes: "FN ≈ ¥3,780 2026-07, 457 listings — deep book for a discontinued item"
+
+  - market_hash_name: "Galil AR | Cerberus (Factory New)"
+    weapon: Galil AR
+    category: collection
+    collection: The Cache Collection
+    source_status: discontinued
+    rerelease_risk: 0.15            # Cache map RETURNED to Active Duty 2026-07-08 —
+                                    # new-Cache-collection risk is the §15 scenario, watch it
+    case_price_cny: 999
+    supply: 7000                    # course claim ~7k FN: plausible, UNVERIFIED
+                                    # (SteamDT: MW 10,064 / FT 20,522; FN not published)
+    aesthetics: 0.7
+    is_primary: false
+    is_secondary_primary: true      # Galil = the secondary-primary fresh-edge tier (§15)
+    notes: "地狱(看门)犬 = Hellhound, the §15 case study; FN ≈ ¥1,400-1,500 cash 2026-07; ~25 trades/day is ALL wears — FN alone is single digits (liquidity gate may rightly exclude it)"
+
+  # ---- Armory rotation candidates (research 2026-07: newly capped supply) ----
+  # Train 2025 + Sport & Field left the Armory on 2026-07-08 -> supply now hard-
+  # capped; classic post-discontinuation appreciation candidates. Item-level
+  # picks + aesthetics TODO (Builder 2): score the collections' Covert/Classified
+  # tiers once the live feed confirms supply and liquidity.
