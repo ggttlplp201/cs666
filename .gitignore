@@ -8,3 +8,15 @@
 
 # Local Claude settings
 .claude/settings.local.json
+.gstack/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Runtime artifacts (backtest runs, paper state, collected data)
+runs/
+data/

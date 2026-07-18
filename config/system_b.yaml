@@ -5,12 +5,16 @@ style: left_side           # staged dip-buying; adds only at support, CD-gated
 
 # --- Model (per Pettersson: trees beat LSTM) ---------------------------------
 model:
-  type: xgboost            # or random_forest; keep linear as interpretable baseline
+  type: xgboost            # or random_forest / ridge (interpretable baseline)
   target: forward_log_return
   horizon_days: 21         # N-day forward return (14–30 typical)
   cross_sectional: true    # rank many items each cycle, not per-item time series
   validation: walk_forward # NEVER random splits
-  # RF/XGB hyperparams tuned by Claude Code; expectation: ~0.5 R² ceiling on daily
+  refit_every_days: 30     # walk-forward refit cadence; embargo = horizon_days
+  min_train_rows: 500
+  rank_blend_model_weight: 0.5   # final rank = blend(model pred, structural composite)
+  # hyperparams live in src/system_b/model.py, seeded from Pettersson's winning
+  # configs (RF 200/None/leaf5/sqrt; XGB 500/6/0.05); ~0.5 R² ceiling on daily
 
 # --- Factor weights (composite score; tune, don't hand-fix on folklore) ------
 factor_weights:
@@ -32,6 +36,57 @@ entry:
   require_pass_hard_filters: true
   attention_feature_from_bus: true   # Tier 3 rising-but-early attention as leading feature
   reject_late_parabolic_attention: true
+  composite_top_pct: 0.50       # entry floor on the STRUCTURAL composite (momentum
+                                # excluded from the gate — flat accumulation phases
+                                # would never clear a momentum-weighted floor);
+                                # hard filters carry most of the selection load
+  max_new_positions_per_cycle: 3
+  entry_limit_discount_pct: 0.005  # left-side: rest the buy slightly below current ask
+
+# --- Regime classifier thresholds (Shared §2 quantification) ------------------
+regime_params:
+  ma_window: 20
+  breadth_bull: 0.65     # share of tracked primaries above middle band
+  breadth_bear: 0.35
+  volume_weak_z: -1.0    # aggregate volume z below this = weak/dried-up
+  trend_bull: 0.03       # 20d equal-weight index log-return
+  trend_bear: -0.03
+
+# --- Category budgets (Shared §5 example split, as fractions of capital) ------
+category_budget_pct:
+  collection: 0.30
+  mid_tier_primary: 0.20
+  material: 0.10
+  glove: 0.20
+  small_item: 0.10
+  other: 0.10
+# note: the Shared §5 dip reserve is expressed via baseline_deployed_pct (50% dry powder)
+
+# --- Turnover / overtrading guards (Shared §8) --------------------------------
+turnover:
+  max_entries_per_item_30d: 4   # staged batches count; "1-2 trades/month" spirit
+
+risk_controls:
+  reentry_cooldown_after_stop_days: 3   # canonical name for shared.yaml's
+                                        # "revenue_cooldown_after_stop_days"
+
+# --- Accumulation-signal detector params (Shared §3.4 operationalized) --------
+accumulation_params:
+  window: 20                 # S1 sideways window (days)
+  flat_thresh: 0.05          # |total move| below this = "flat"
+  listing_slope_thresh: -0.002   # listings shrinking faster than -0.2%/day
+  vol_z_thresh: 2.0          # S2: executed-volume z-spike
+  small_move: 0.02           # S2: price barely moves
+  market_down_thresh: -0.02  # S3: market 5d return below this = "bad tape"
+
+# --- Go-live gate (System B §9) -----------------------------------------------
+# Gate on per-trade NET edge + ranker IC (a thin paper book can carry real edge
+# at small portfolio return); drawdown bounds the downside.
+go_live_gate:
+  min_avg_trade_return_net: 0.03   # ≥3% avg per closed lot, net of fees+slippage
+  min_closed_trades: 10            # statistical floor before the number means anything
+  min_rank_ic: 0.0                 # walk-forward Spearman IC must be non-negative
+  max_drawdown: -0.20
 
 # --- Staged build (Shared §6.2) ----------------------------------------------
 staged_entry:
