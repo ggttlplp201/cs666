@@ -74,8 +74,9 @@ replaced — see HANDOFF §0/§A for what's still human-supplied (rules-table
 content, account allowlist, API keys).
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install pyyaml pytest
-.venv/bin/pytest                                        # test suite
+python3 -m venv .venv
+.venv/bin/python -m pip install pyyaml numpy pandas scipy scikit-learn pytest streamlit
+.venv/bin/pytest                                        # test suite (186)
 PYTHONPATH=src .venv/bin/python -m system_a.runner --demo   # end-to-end paper demo
 ```
 
@@ -88,8 +89,33 @@ to `var/provenance_a.jsonl`.
 
 ## System A research dashboard (read-only)
 
-`make dashboard` → Streamlit on localhost. It cannot trade or change config.
-Each page answers one question:
+### Running it locally (works on a fresh clone — no API keys needed)
+
+```bash
+git clone https://github.com/ggttlplp201/cs666.git && cd cs666
+python3 -m venv .venv
+.venv/bin/python -m pip install pyyaml numpy pandas scipy scikit-learn streamlit
+make dashboard          # → opens http://localhost:8501
+```
+
+No `.env` is required — the dashboard is read-only and never touches secrets.
+It renders from local data files that are **not in git** (`var/` is ignored):
+
+- `var/market.db` — poller snapshots + Steam backtest history. **Without it,
+  pages show "no poller data yet" placeholders** — that means missing data,
+  not a broken install. Either copy `var/market.db` from the machine running
+  the poller (ask Leon — single SQLite file, safe to share, contains no
+  credentials), or generate your own history with a Steam session cookie:
+  `PYTHONPATH=src .venv/bin/python -m shared.steam_history`.
+- `var/provenance_a.jsonl` — decision log for the Prediction Log page.
+  `make demo` generates one from the synthetic paper demo in seconds.
+
+If port 8501 is taken: `.venv/bin/streamlit run dashboard_a/app.py --server.port 8502`.
+(No `make` on the machine? Run that same `streamlit run` command directly.)
+
+### What each page answers
+
+The dashboard cannot trade or change config — read-only by construction.
 
 1. **Data health** — is the poller alive? Gaps in the series are loud (a
    silently broken poller is the failure mode we care most about).

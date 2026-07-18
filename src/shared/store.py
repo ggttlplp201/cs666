@@ -38,6 +38,8 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_ts ON snapshots (ts);
 
 class SnapshotStore:
     def __init__(self, path: Path | str = ":memory:"):
+        if str(path) != ":memory:":
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(path))
         self.conn.executescript(_SCHEMA)
 
