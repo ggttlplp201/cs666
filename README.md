@@ -97,4 +97,16 @@ The `.md` files are canonical; the PDFs in `docs/pdf/` are snapshots. After edit
 1. `docs/Shared_Market-Fundamentals_Indicator-Library.md` — how the market works + governance (§12).
 2. `docs/RESEARCH_INDEX.md` — what the papers add, and the notes-first precedence.
 3. Your system doc (A or B).
-4. `research/papers/paper1.pdf` / `paper2.pdf` — only when you need a specific method or number.
+4. `docs/System-B_Research-Notes.md` — Builder 2's 2026-07 research pass: verified venue
+   facts (fee cut to 1.5%, T+7 seller-fund settlement, Armory mechanics), vendor due
+   diligence (csmarketapi has NO BUFF163; volume history must be self-collected),
+   paper number extraction, and the System B engine's build decisions.
+5. `research/papers/paper1.pdf` / `paper2.pdf` — only when you need a specific method or number.
+
+## System B engine (built)
+
+`src/shared/` + `src/system_b/` contain Builder 2's engine: normalized data layer,
+indicator library, regime classifier, T+7-aware ledger (item lock AND seller-fund
+settlement), paper broker, honest walk-forward backtester, factor/accumulation-signal
+strategy, risk gate, provenance journaling, synthetic market for key-less development,
+and a daily paper-trading runner. See `src/system_b/README.md` for usage.

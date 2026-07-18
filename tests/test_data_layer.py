@@ -13,7 +13,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def test_config_loads_shared_and_overlay():
     cfg = Config.load(REPO_ROOT, system="system_a")
-    assert cfg.require("costs.buff_fee_pct") == 0.025
+    # BUFF cut the sell fee 2.5% → 1.5% on 2026-04-14 (Builder 2's verified
+    # correction, buff.163.com/news/87397)
+    assert cfg.require("costs.buff_fee_pct") == 0.015
     assert cfg.require("cooldown.trade_lock_days") == 7
     assert cfg.require("system_a.momentum_chase_max_layers") == 2
     assert cfg.get("nonexistent.path", default=42) == 42

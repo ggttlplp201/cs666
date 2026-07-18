@@ -8,12 +8,18 @@
 
 # Local Claude settings
 .claude/settings.local.json
+.gstack/
 
 # Python
 .venv/
 __pycache__/
 *.pyc
+*.egg-info/
 .pytest_cache/
 
 # Runtime state (paper wallet, snapshots, provenance logs)
 var/
+
+# Runtime artifacts (backtest runs, paper state, collected data)
+runs/
+data/

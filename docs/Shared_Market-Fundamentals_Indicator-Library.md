@@ -4,7 +4,7 @@
 >
 > **Source:** distilled from a Chinese-market trading crash course. Treat every rule here as a **testable hypothesis to validate in backtest net of fees**, not gospel. Most of this is discretionary human advice; §8 covers how to convert it into hard automation constraints.
 >
-> **Fee note:** the source quotes round-trip fees of ~3–5%. On BUFF a single side is ≈2.5%; model *actual* per-venue, round-trip fees in all EV math (System B §5 / System A §5). The principle "always deduct fees before calling something profitable" is non-negotiable.
+> **Fee note:** the source quotes round-trip fees of ~3–5%. On BUFF the seller-side fee was ≈2.5% until **2026-04-14, when BUFF cut it to 1.5%** (buff.163.com/news/87397 — Builder 2's due diligence; `costs.buff_fee_pct` in config is the live number). Withdrawal adds 1% on cash-out, and since 2025-07-16 seller funds settle only after the 7-day Trade Protection window (proceeds are receivables, not cash). Model *actual* per-venue, round-trip fees in all EV math (System B §5 / System A §5). The principle "always deduct fees before calling something profitable" is non-negotiable.
 
 ---
 

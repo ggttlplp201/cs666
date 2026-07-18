@@ -1,9 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cs2-quant"
 version = "0.1.0"
-description = "CS2 skin trading agents on BUFF163 — System A (event-driven) + shared infrastructure"
+description = "CS2 skin trading agents on BUFF163 — System A (event-driven), System B (positional) + shared infrastructure"
 requires-python = ">=3.12"
-dependencies = ["pyyaml"]
+dependencies = [
+    "pyyaml",
+    # System B (shared_b) stack:
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+ml = ["xgboost"]
+plot = ["matplotlib"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
