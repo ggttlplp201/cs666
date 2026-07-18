@@ -58,10 +58,12 @@ class Harness:
         self.ledger = Ledger(
             trade_lock_days=self.config.require("cooldown.trade_lock_days")
         )
-        gating = self.config.get("system_a.rules_gating", {}) or {}
+        # Mechanics tests run with test-local gating, NOT the live config's:
+        # the config reflects current backtest verdicts (which can disable
+        # everything), while these tests verify the machinery works.
         self.rules = RulesTable.load(
             REPO_ROOT / "config" / "rules_table_a.yaml",
-            disabled_rules=gating.get("disabled_rules", []),
+            disabled_rules=["map_pool_change"], disabled_pairs=[],
         )
         self.gate = RiskGate(self.config, self.ledger)
         self.provenance = ProvenanceLog(tmp_path / "prov.jsonl")

@@ -39,14 +39,17 @@ rules_table_path: config/rules_table_a.yaml   # substitute pairs, event rules, l
 
 # --- Rule gating (researched table wiring) ------------------------------------
 rules_gating:
-  # Rules here are LOG-ONLY regardless of confidence. map_pool_change stays
-  # disabled until the event-study backtest disambiguates the demand-positive
-  # vs new-collection-supply conflict (rules table §2 map_pool_change / §3 Cache).
-  disabled_rules: [map_pool_change]
-  # Pairs that FAILED the event-study backtest net of fees+lock — log-only
-  # until re-validated. scoped_rifles: 0/2 directional, -9.3% net (2026-07-18
-  # run on Steam data; matches the pair's own "prices less directly" note).
-  disabled_pairs: [scoped_rifles]
+  # Rules here are LOG-ONLY regardless of confidence.
+  # 2026-07-18 OUT-OF-SAMPLE event study (Steam data, Steam 15% fee, lock
+  # from fill, in-sample 2022-11-18 excluded): NO rule cleared fees+lock on
+  # the venue tested — OOS mean -10.4% net (placebo -14.3%). Direction
+  # prediction stayed strong (ct_rifle 10/12) and the BUFF-fee counterfactual
+  # is marginally positive, but per policy anything failing net of fees+lock
+  # is DO-NOT-TRADE until re-validated on BUFF-native data (the poller is
+  # accumulating it). Re-enable only after a BUFF-priced study passes.
+  disabled_rules: [map_pool_change, weapon_balance_change]
+  # scoped_rifles additionally failed DIRECTION (0/2 both runs).
+  disabled_pairs: [scoped_rifles, ct_rifle]
   # trade_up collection→gold-output map (rules table §4 todo — Leon supplies).
   # While empty, trade_up_pool_change candidates are log-only.
   collections_with_gold: []

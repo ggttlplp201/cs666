@@ -3,23 +3,47 @@ from pathlib import Path
 
 import pytest
 
-from shared.schema import Direction, Item
+from shared.schema import Direction, Item, Signal, SignalType
 from shared.store import SnapshotStore
 from system_a.event_study import (
-    DAY, primary_validation_2022_11_18, run_event_study, signals_for_event,
-    weapon_directions_from_text,
+    DAY, buy_and_hold_baseline, fee_for_source, placebo_study,
+    primary_validation_2022_11_18, run_event_study, signals_for_event,
+    weapon_directions_from_text, _bar_after, _bar_at_or_before,
 )
 from system_a.rules import RulesTable
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 M4A4 = "M4A4 | Desolate Space (Field-Tested)"
 M4A1S = "M4A1-S | Decimator (Field-Tested)"
+STUDY_KW = dict(
+    lock_days=7, buff_fee_pct=0.015,
+    buff_fee_history=[{"until": "2026-04-14", "fee_pct": 0.025}],
+    steam_fee_pct=0.15,
+)
 
 
 def _rules():
     return RulesTable.load(
         REPO_ROOT / "config" / "rules_table_a.yaml",
         disabled_rules=["map_pool_change"],
+    )
+
+
+def _synthetic_rules(event_date="2024-05-15"):
+    """ct_rifle pair + one OUT-OF-SAMPLE synthetic event (never 2022-11-18 —
+    that date is quarantined as in-sample by the study)."""
+    return RulesTable(
+        {
+            "substitute_pairs": [
+                {"id": "ct_rifle", "a": "M4A1-S", "b": "M4A4",
+                 "confidence": "high", "evidence": "paper1"},
+            ],
+            "event_rules": [{"id": "weapon_balance_change", "confidence": "high"}],
+            "historical_events": [
+                {"date": event_date, "type": "weapon_balance_change",
+                 "change": "M4A1-S nerf"},
+            ],
+        }
     )
 
 
@@ -61,16 +85,49 @@ class TestTextParsing:
         assert signals[0].event_rule == "weapon_balance_change"
 
 
+class TestAccounting:
+    def test_fee_follows_source(self):
+        history = [{"until": "2026-04-14", "fee_pct": 0.025}]
+        # Steam data pays Steam's fee regardless of era
+        assert fee_for_source("steam", _ts("2022-11-25"), 0.015, history, 0.15) == 0.15
+        # BUFF data pays the era-correct BUFF fee
+        assert fee_for_source("buff", _ts("2022-11-25"), 0.015, history, 0.15) == 0.025
+        assert fee_for_source("buff", _ts("2026-05-01"), 0.015, history, 0.15) == 0.015
+
+    def test_entry_never_uses_past_bar(self):
+        series = [
+            _steam_item(M4A4, 100.0, _ts("2022-11-16")),
+            _steam_item(M4A4, 130.0, _ts("2022-11-20")),
+        ]
+        event = _ts("2022-11-18")
+        assert _bar_after(series, event)[1] == 130.0        # next bar, not 100
+        assert _bar_after(series, event, max_delay_days=1.0) is None
+        assert _bar_at_or_before(series, event)[1] == 100.0  # context only
+
+    def test_lock_runs_from_fill_not_event(self):
+        """Entry fills 3 days late → exit must be ≥ fill+7d, not event+7d."""
+        event = "2024-05-15"
+        store = SnapshotStore()
+        # no bars until event+3; then daily bars
+        for d in range(3, 20):
+            ts = _ts(event) + d * DAY
+            store.insert([_steam_item(M4A4, 100.0 + d, ts),
+                          _steam_item(M4A1S, 80.0, ts)], source="steam")
+        outcomes, _, _ = run_event_study(
+            _synthetic_rules(event), store, [M4A4, M4A1S], **STUDY_KW,
+        )
+        traded = [o for o in outcomes if o.net_pnl_pct is not None]
+        assert traded
+        held_days = (traded[0].exit_ts - traded[0].entry_ts) / DAY
+        assert held_days >= 7.0
+
+
 class TestEventStudy:
-    def _store_with_reaction(self, event_date, jump_pct=0.20):
-        """Steam series: substitute (M4A4) flat before the event, jumps after;
-        nerfed (M4A1-S) declines after."""
+    def _store_with_reaction(self, event_date, jump_pct=0.30):
         store = SnapshotStore()
         t0 = _ts(event_date) - 30 * DAY
         for d in range(45):
             ts = t0 + d * DAY
-            # Reaction lands the day AFTER the event: entry is the event-day
-            # (pre-reaction) price, matching "we react when the news breaks".
             after = ts > _ts(event_date)
             store.insert(
                 [
@@ -81,67 +138,89 @@ class TestEventStudy:
             )
         return store
 
-    def test_substitute_trade_scores_positive_net_of_fee(self):
-        rules = RulesTable(
-            {
-                "substitute_pairs": [
-                    {"id": "ct_rifle", "a": "M4A1-S", "b": "M4A4",
-                     "confidence": "high", "evidence": "paper1"},
-                ],
-                "event_rules": [
-                    {"id": "weapon_balance_change", "confidence": "high"},
-                ],
-                "historical_events": [
-                    {"date": "2022-11-18", "type": "weapon_balance_change",
-                     "change": "M4A1-S nerf"},
-                ],
-            }
-        )
-        store = self._store_with_reaction("2022-11-18")
-        outcomes, scores, notes = run_event_study(
-            rules, store, [M4A4, M4A1S], fee_pct=0.025, lock_days=7,
+    def test_substitute_trade_scored_at_steam_fee(self):
+        rules = _synthetic_rules("2024-05-15")
+        store = self._store_with_reaction("2024-05-15", jump_pct=0.30)
+        outcomes, scores, _ = run_event_study(
+            rules, store, [M4A4, M4A1S], **STUDY_KW,
         )
         traded = [o for o in outcomes if o.net_pnl_pct is not None]
-        assert len(traded) == 1 and traded[0].candidate.market_hash_name == M4A4
-        # entry at post-event price (nearest to event day) → flat +0% … entry
-        # nearest snapshot is event day (already jumped): exit==entry ⇒ -fee
-        # OR pre-event day: +20% - fee. Either way direction HIT is recorded.
-        assert traded[0].direction_hit
+        assert len(traded) == 1
+        # +30% gross at Steam's 15% fee → 130*0.85/100-1 = +10.5%
+        assert traded[0].gross_pct == pytest.approx(0.30)
+        assert traded[0].net_pnl_pct == pytest.approx(1.30 * 0.85 - 1)
         score = scores["substitute_pair:ct_rifle"]
-        assert score.trades == 1 and score.scoreable == 1 and score.hits == 1
-        bearish_score = scores["weapon_balance_change.self"]
-        assert bearish_score.hits == 1  # M4A1-S predicted down, went down
+        assert score.n == 1 and score.mean > 0
+        assert score.verdict.startswith("needs-more-data")  # n too small to TRADE
+
+    def test_in_sample_event_never_scores(self):
+        rules = _synthetic_rules("2022-11-18")   # the quarantined date
+        store = self._store_with_reaction("2022-11-18", jump_pct=0.30)
+        outcomes, scores, _ = run_event_study(
+            rules, store, [M4A4, M4A1S], **STUDY_KW,
+        )
+        assert all(o.sample_class == "in_sample" for o in outcomes)
+        # outcomes reported, but nothing counts toward the scorecard
+        assert all(s.scoreable == 0 and s.n == 0 for s in scores.values())
+
+    def test_scorecard_flags_failing_rule(self):
+        rules = _synthetic_rules("2024-05-15")
+        store = self._store_with_reaction("2024-05-15", jump_pct=-0.15)
+        _, scores, _ = run_event_study(rules, store, [M4A4, M4A1S], **STUDY_KW)
+        assert "DO-NOT-TRADE" in scores["substitute_pair:ct_rifle"].verdict
 
     def test_live_event_excluded_and_noted(self):
         rules = _rules()
-        store = SnapshotStore()   # empty — every historical event lacks data
         outcomes, scores, notes = run_event_study(
-            rules, store, [M4A4, M4A1S], fee_pct=0.025, lock_days=7,
+            rules, SnapshotStore(), [M4A4, M4A1S], **STUDY_KW,
         )
-        assert any("LIVE FORWARD TEST" in n for n in notes)          # 2026-07-09
-        assert any("collection→gold map missing" in n for n in notes)  # 2025-10-22
-        assert all(o.net_pnl_pct is None for o in outcomes)          # no data → no trades
+        assert any("LIVE FORWARD TEST" in n for n in notes)
+        assert any("collection→gold map missing" in n for n in notes)
+        assert any("produced no signals" in n for n in notes)   # 2025-10-30 echo
+        assert all(o.net_pnl_pct is None for o in outcomes)
 
-    def test_scorecard_flags_failing_rule(self):
-        rules = RulesTable(
-            {
-                "substitute_pairs": [
-                    {"id": "ct_rifle", "a": "M4A1-S", "b": "M4A4",
-                     "confidence": "high", "evidence": "e"},
-                ],
-                "event_rules": [{"id": "weapon_balance_change", "confidence": "high"}],
-                "historical_events": [
-                    {"date": "2022-11-18", "type": "weapon_balance_change",
-                     "change": "M4A1-S nerf"},
-                ],
-            }
-        )
-        # Substitute FALLS after the event → trade loses net of fee
-        store = self._store_with_reaction("2022-11-18", jump_pct=-0.15)
-        _, scores, _ = run_event_study(
-            rules, store, [M4A4, M4A1S], fee_pct=0.025, lock_days=7,
-        )
-        assert "DO NOT TRADE" in scores["substitute_pair:ct_rifle"].verdict
+    def test_scorecard_stats_fields(self):
+        from system_a.event_study import RuleScore
+        s = RuleScore("r", "high")
+        s.returns = [0.10, -0.02, 0.04]
+        s.scoreable, s.hits = 3, 2
+        s.events = {"a", "b"}
+        assert s.n == 3
+        assert s.mean == pytest.approx(0.04)
+        assert s.median == pytest.approx(0.04)
+        assert s.worst == pytest.approx(-0.02)
+        assert s.verdict == "TRADE"
+        s.returns = [-0.05]
+        assert "DO-NOT-TRADE" in s.verdict
+
+
+class TestNegativeControls:
+    def _long_store(self):
+        store = SnapshotStore()
+        t0 = _ts("2023-01-01")
+        for d in range(400):
+            ts = t0 + d * DAY
+            store.insert(
+                [_steam_item(M4A4, 100.0 + 0.01 * d, ts),
+                 _steam_item(M4A1S, 80.0, ts)],
+                source="steam",
+            )
+        return store
+
+    def test_placebo_deterministic_and_avoids_events(self):
+        rules = _synthetic_rules("2023-06-15")
+        store = self._long_store()
+        p1 = placebo_study(rules, store, [M4A4], 7, 0.15, n_dates=10, seed=3)
+        p2 = placebo_study(rules, store, [M4A4], 7, 0.15, n_dates=10, seed=3)
+        assert p1 == p2 and len(p1) > 0
+        # flat-drift series at 15% fee → placebo strongly negative
+        assert max(p1) < 0
+
+    def test_buy_and_hold_baseline_shape(self):
+        store = self._long_store()
+        baseline = buy_and_hold_baseline(store, [M4A4, M4A1S], ["2023-06-15"], 7, 0.15)
+        assert set(baseline) == {"2023-06-15"}
+        assert len(baseline["2023-06-15"]) == 2
 
 
 class TestPrimaryValidation:
@@ -153,10 +232,11 @@ class TestPrimaryValidation:
             ts = t0 + d * DAY
             price = 100.0 + 0.05 * (d % 4)
             if ts >= event_ts:
-                price = 132.0 + 0.05 * (d % 4)   # instant durable break
+                price = 132.0 + 0.05 * (d % 4)
             store.insert([_steam_item(M4A4, price, ts)], source="steam")
         result = primary_validation_2022_11_18(_rules(), store)
         assert result.startswith("PASS"), result
+        assert "IN-SAMPLE" in result   # labeled as correctness, not edge
 
     def test_fail_without_break(self):
         store = SnapshotStore()
@@ -166,51 +246,17 @@ class TestPrimaryValidation:
                 [_steam_item(M4A4, 100.0 + 0.05 * (d % 4), t0 + d * DAY)],
                 source="steam",
             )
-        result = primary_validation_2022_11_18(_rules(), store)
-        assert result.startswith("FAIL"), result
+        assert primary_validation_2022_11_18(_rules(), store).startswith("FAIL")
 
     def test_skip_without_data(self):
         assert primary_validation_2022_11_18(_rules(), SnapshotStore()).startswith("SKIPPED")
 
 
-class TestCodexFindings:
-    def test_fee_schedule_resolves_by_era(self):
-        from system_a.event_study import fee_for_ts
-        history = [{"until": "2026-04-14", "fee_pct": 0.025}]
-        assert fee_for_ts(_ts("2022-11-25"), 0.015, history) == 0.025
-        assert fee_for_ts(_ts("2026-05-01"), 0.015, history) == 0.015
-        assert fee_for_ts(_ts("2022-11-25"), 0.015, []) == 0.015
-
-    def test_entry_price_never_uses_past_bar(self):
-        from system_a.event_study import _price_after, _price_at_or_before
-        series = [
-            _steam_item(M4A4, 100.0, _ts("2022-11-16")),
-            _steam_item(M4A4, 130.0, _ts("2022-11-20")),
-        ]
-        event = _ts("2022-11-18")
-        assert _price_after(series, event) == 130.0        # next bar, not 100
-        assert _price_after(series, event, max_delay_days=1.0) is None
-        assert _price_at_or_before(series, event) == 100.0  # context only
-
-    def test_unhandled_event_type_is_noted_not_silent(self):
-        rules = RulesTable(
-            {"event_rules": [], "substitute_pairs": [],
-             "historical_events": [
-                 {"date": "2025-10-30", "type": "trade_up_lock_expiry",
-                  "change": "locks expired"},
-             ]}
-        )
-        _, _, notes = run_event_study(
-            rules, SnapshotStore(), [M4A4], fee_pct=0.015, lock_days=7,
-        )
-        assert any("produced no signals" in n for n in notes)
-
-    def test_non_balance_event_rule_cannot_map_to_trades(self):
-        from shared.schema import Signal, SignalType
-        rules = _rules()
-        signal = Signal(
-            tier=2, type=SignalType.CONFIRMED_UPDATE, items=("M4A1-S",),
-            direction=Direction.BEARISH, confidence=1.0, first_seen_ts=0.0,
-            event_rule="map_pool_change",
-        )
-        assert rules.map_signal(signal, [M4A4, M4A1S]) == []
+def test_non_balance_event_rule_cannot_map_to_trades():
+    rules = _rules()
+    signal = Signal(
+        tier=2, type=SignalType.CONFIRMED_UPDATE, items=("M4A1-S",),
+        direction=Direction.BEARISH, confidence=1.0, first_seen_ts=0.0,
+        event_rule="map_pool_change",
+    )
+    assert rules.map_signal(signal, [M4A4, M4A1S]) == []

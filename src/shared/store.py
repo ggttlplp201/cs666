@@ -90,6 +90,24 @@ class SnapshotStore:
         last = self.last_ts(source)
         return last is None or (now_ts - last) > max_age_seconds
 
+    def gap_report(
+        self, source: str, expected_seconds: float, tolerance_factor: float = 2.5
+    ) -> list[tuple[float, float, float]]:
+        """Data-sanity check: holes in the snapshot cadence. Returns
+        (gap_start_ts, gap_end_ts, gap_seconds) for every inter-snapshot gap
+        exceeding tolerance_factor × expected_seconds. A series with silent
+        holes is worse than no series — callers must surface these."""
+        rows = self.conn.execute(
+            "SELECT DISTINCT ts FROM snapshots WHERE source = ? ORDER BY ts",
+            (source,),
+        ).fetchall()
+        gaps = []
+        threshold = tolerance_factor * expected_seconds
+        for (prev,), (curr,) in zip(rows, rows[1:]):
+            if curr - prev > threshold:
+                gaps.append((prev, curr, curr - prev))
+        return gaps
+
     def counts_by_source(self) -> dict[str, int]:
         rows = self.conn.execute(
             "SELECT source, COUNT(*) FROM snapshots GROUP BY source"

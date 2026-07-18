@@ -139,7 +139,12 @@ def run_demo(config: Config) -> int:
 def run_poller(config: Config, max_cycles: int | None = None) -> int:
     """Snapshot poller (Shared §2a.3): poll /v1/prices/latest on the refresh
     cadence and persist every response forever — our own BUFF depth history
-    accumulates from day one; data not captured is lost permanently."""
+    accumulates from day one; data not captured is lost permanently.
+
+    A poller that dies silently is worse than none (a series with hidden
+    holes gets trusted): every start is logged with a timestamp, a gap since
+    the last stored snapshot is reported at startup, and transient feed
+    errors back off and retry instead of exiting."""
     poller = config.require("data.snapshot_poller")
     if not poller.get("enabled"):
         print("data.snapshot_poller.enabled is false")
@@ -148,23 +153,76 @@ def run_poller(config: Config, max_cycles: int | None = None) -> int:
     feed = Cs2shFeed(tracked, config.require("fx.usd_cny_rate"))
     store = SnapshotStore(REPO_ROOT / poller["db_path"])
     interval = config.require("data.refresh_seconds")
-    print(f"polling {len(tracked)} items every {interval}s → {poller['db_path']}")
+    now = time.time()
+    print(
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] POLLER START (restart if a "
+        f"START line precedes this without a clean stop) — {len(tracked)} "
+        f"items every {interval}s → {poller['db_path']}"
+    )
+    last = store.last_ts(source="buff")
+    if last is not None and now - last > 2.5 * interval:
+        print(
+            f"⚠ GAP AT STARTUP: {(now - last) / 3600:.1f}h since last stored "
+            f"snapshot ({_fmt_ts(last)}) — series has a hole from here back."
+        )
     cycles = 0
+    consecutive_failures = 0
     while max_cycles is None or cycles < max_cycles:
         try:
             items = feed.fetch()
+            consecutive_failures = 0
         except FeedUnavailable as e:
-            print(f"feed unavailable: {e}")
+            print(f"feed unavailable (fatal): {e}")
             return 1
+        except Exception as e:  # transient network/API errors: log, back off, retry
+            consecutive_failures += 1
+            wait = min(interval * consecutive_failures, 3600)
+            print(
+                f"⚠ [{time.strftime('%Y-%m-%d %H:%M:%S')}] poll failed "
+                f"({consecutive_failures}x): {e} — retrying in {wait:.0f}s"
+            )
+            time.sleep(wait)
+            continue
+        previous_ts = store.last_ts(source="buff")
         store.insert(items, source="buff")
         cycles += 1
+        gap_note = ""
+        if items and previous_ts is not None and \
+                items[0].ts - previous_ts > 2.5 * interval:
+            gap_note = f"  ⚠ GAP {(items[0].ts - previous_ts) / 60:.0f}min"
         print(
             f"[{cycles}] {len(items)} items @ {items[0].ts if items else '-'}"
             + (f"  api-errors: {len(feed.last_errors)}" if feed.last_errors else "")
+            + gap_note
         )
         if max_cycles is None or cycles < max_cycles:
             time.sleep(interval)
     return 0
+
+
+def run_gap_check(config: Config) -> int:
+    """Data-sanity report: holes in the stored buff series (Shared §12 —
+    pause on stale/divergent data; a holed series must not be trusted)."""
+    poller = config.require("data.snapshot_poller")
+    store = SnapshotStore(REPO_ROOT / poller["db_path"])
+    interval = config.require("data.refresh_seconds")
+    gaps = store.gap_report("buff", expected_seconds=interval)
+    last = store.last_ts(source="buff")
+    if last is None:
+        print("no buff snapshots stored yet")
+        return 1
+    print(f"last snapshot: {_fmt_ts(last)} ({(time.time() - last) / 60:.0f}min ago)")
+    if not gaps:
+        print("no gaps > 2.5× cadence — series is continuous")
+        return 0
+    print(f"⚠ {len(gaps)} gap(s):")
+    for start, end, seconds in gaps:
+        print(f"  {_fmt_ts(start)} → {_fmt_ts(end)}  ({seconds / 3600:.1f}h)")
+    return 2
+
+
+def _fmt_ts(ts: float) -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(ts)) + "Z"
 
 
 def run_live(config: Config) -> int:
@@ -208,6 +266,8 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--replay", type=Path, metavar="SNAPSHOTS_JSONL")
     mode.add_argument("--poll", action="store_true",
                       help="snapshot poller: persist /v1/prices/latest forever")
+    mode.add_argument("--gap-check", action="store_true",
+                      help="report holes in the stored buff snapshot series")
     mode.add_argument("--live", action="store_true")
     parser.add_argument("--posts", type=Path, default=None)
     parser.add_argument("--cycles", type=int, default=None,
@@ -221,6 +281,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_replay(config, args.replay, args.posts)
     if args.poll:
         return run_poller(config, args.cycles)
+    if args.gap_check:
+        return run_gap_check(config)
     return run_live(config)
 
 
