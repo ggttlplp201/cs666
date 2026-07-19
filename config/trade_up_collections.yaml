@@ -1,0 +1,177 @@
+# config/trade_up_collections.yaml
+# CS2 trade-up collection → gold-output map (rules table §4 todo).
+#
+# ⚠⚠ RESEARCHED BY CLAUDE, NOT YET VERIFIED BY LEON. Every entry below is from
+# public sources (listed under `sources:`), assembled 2026-07-19. The
+# case→gold-TYPE backbone (knife vs glove per case) is high-confidence and
+# well-documented. The per-case COVERT skin lists are verified only where
+# `covert_verified: true`; entries with `covert_verified: false` have the
+# gold-type confirmed but the red-skin list still needs your check/fill.
+# DO NOT trade off this until verified.
+#
+# MECHANIC (late-2025 "Retake" update — the change the rules table's
+# 2025-10-22 event models): 5 Covert (red) skins from the SAME case trade up
+# to one gold-tier item (knife OR glove) from that case's rare-special pool.
+# Output float = average of the 5 inputs. StatTrak in → StatTrak out (knives
+# only; gloves have no StatTrak). This is why the event crashed knives/gloves
+# (supply expands) and pumped cheap Coverts (they became viable fuel).
+#
+# COLLECTION-AWARENESS (what the rule needs): only Coverts in a case whose
+# gold tier is knives/gloves are affected. MAP COLLECTIONS (Dust II, Mirage,
+# Cache, …) have Covert skins but NO gold output — their reds do NOT react to
+# a gold trade-up change. See `map_collections_no_gold` at the bottom.
+
+meta:
+  researched: 2026-07-19
+  verified_by_leon: false
+  sources:
+    - https://tradeit.gg/blog/all-knife-cases-in-cs2/
+    - https://tradeit.gg/blog/all-glove-cases-in-cs2/
+    - https://cs.money/blog/trade/cs2-contract-guide-what-skins-give-which-knife/
+    - https://skin.land/blog/cs-trade-up-gloves-guide-which-skins-give-which-gloves/
+    - https://stash.clash.gg/skin-rarity/Covert   # per-case covert verification
+    - https://www.hltv.org/news/43004/knife-trade-ups-and-return-of-retakes-headline-cs2-update
+
+# =============================================================================
+# GLOVE CASES — gold tier = gloves (the 7 glove cases; high confidence)
+# =============================================================================
+glove_cases:
+  - case: Glove Case
+    gold: glove
+    covert_verified: false
+    coverts: []            # TODO(Leon): verify (e.g. M4A4 Buzz Kill, SSG 08 Dragonfire?)
+  - case: Operation Hydra Case
+    gold: glove
+    covert_verified: false
+    coverts: []            # TODO(Leon)
+  - case: Clutch Case
+    gold: glove
+    covert_verified: true
+    coverts:
+      - "MP7 | Bloodsport"
+      - "USP-S | Cortex"
+  - case: Operation Broken Fang Case
+    gold: glove
+    covert_verified: false
+    coverts: []            # TODO(Leon) (e.g. M4A1-S Printstream, Glock Neo-Noir?)
+  - case: Snakebite Case
+    gold: glove
+    covert_verified: false
+    coverts: []            # TODO(Leon) (e.g. USP-S The Traitor, XM1014 Frost Borre?)
+  - case: Recoil Case
+    gold: glove
+    covert_verified: false
+    coverts: []            # TODO(Leon) (e.g. AK-47 Ice Coaled, Dual Berettas Flora Carnivora?)
+  - case: Revolution Case
+    gold: glove
+    covert_verified: false
+    coverts: []            # TODO(Leon) (e.g. AK-47 Head Shot, M4A4 Temukau?)
+
+# =============================================================================
+# KNIFE CASES — gold tier = knives (from the tradeit knife-case enumeration)
+# covert_verified:true entries confirmed against clash.gg per-case pages.
+# =============================================================================
+knife_cases:
+  # --- active drop pool (2026) — highest priority to verify ---
+  - case: Dreams & Nightmares Case
+    gold: knife
+    covert_verified: true
+    coverts:
+      - "AK-47 | Nightwish"
+      - "MP9 | Starlight Protector"
+  - case: Fever Case
+    gold: knife
+    covert_verified: true
+    coverts:
+      - "AWP | Printstream"
+      - "FAMAS | Bad Trip"
+  - case: Kilowatt Case
+    gold: knife
+    covert_verified: true
+    coverts:
+      - "AK-47 | Inheritance"
+      - "AWP | Chrome Cannon"
+  - case: Fracture Case
+    gold: knife
+    covert_verified: true
+    coverts:
+      - "Desert Eagle | Printstream"
+      - "AK-47 | Legion of Anubis"
+  - case: Gallery Case
+    gold: knife
+    covert_verified: false
+    coverts: []            # TODO(Leon) (Kukri knife case)
+  # --- rare drop pool / discontinued knife cases ---
+  - case: Operation Riptide Case
+    gold: knife
+    covert_verified: true
+    coverts:
+      - "Desert Eagle | Ocean Drive"
+      - "AK-47 | Leet Museo"
+  - case: Prisma Case
+    gold: knife
+    covert_verified: true
+    coverts:
+      - "M4A4 | The Emperor"
+      - "Five-SeveN | Angry Mob"
+  - case: Prisma 2 Case
+    gold: knife
+    covert_verified: true
+    coverts:
+      - "M4A1-S | Player Two"
+      - "Glock-18 | Bullet Queen"
+  # gold-type confirmed, coverts still to verify:
+  - {case: Chroma Case,               gold: knife, covert_verified: false, coverts: []}
+  - {case: Chroma 2 Case,             gold: knife, covert_verified: false, coverts: []}
+  - {case: Chroma 3 Case,             gold: knife, covert_verified: false, coverts: []}
+  - {case: Gamma Case,                gold: knife, covert_verified: false, coverts: []}
+  - {case: Gamma 2 Case,              gold: knife, covert_verified: false, coverts: []}
+  - {case: Spectrum Case,             gold: knife, covert_verified: false, coverts: []}
+  - {case: Spectrum 2 Case,           gold: knife, covert_verified: false, coverts: []}
+  - {case: Operation Breakout Weapon Case, gold: knife, covert_verified: false, coverts: []}
+  - {case: Falchion Case,             gold: knife, covert_verified: false, coverts: []}
+  - {case: Huntsman Weapon Case,      gold: knife, covert_verified: false, coverts: []}
+  - {case: Operation Wildfire Case,   gold: knife, covert_verified: false, coverts: []}
+  - {case: Shadow Case,               gold: knife, covert_verified: false, coverts: []}
+  - {case: Danger Zone Case,          gold: knife, covert_verified: false, coverts: []}
+  - {case: Horizon Case,              gold: knife, covert_verified: false, coverts: []}
+  - {case: Shattered Web Case,        gold: knife, covert_verified: false, coverts: []}
+  - {case: CS20 Case,                 gold: knife, covert_verified: false, coverts: []}
+  - {case: Revolver Case,             gold: knife, covert_verified: false, coverts: []}
+  - {case: Winter Offensive Weapon Case,   gold: knife, covert_verified: false, coverts: []}
+  - {case: Operation Bravo Case,      gold: knife, covert_verified: false, coverts: []}
+  - {case: Operation Phoenix Weapon Case,  gold: knife, covert_verified: false, coverts: []}
+  - {case: Operation Vanguard Weapon Case, gold: knife, covert_verified: false, coverts: []}
+  # ⚠ Earliest cases (CS:GO Weapon Case 1/2/3, eSports 2013/2013 Winter/2014
+  # Summer) predate the modern rarity structure — confirm they actually expose
+  # a Covert→gold trade-up before including. Listed for completeness only:
+  - {case: CS:GO Weapon Case,         gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
+  - {case: CS:GO Weapon Case 2,       gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
+  - {case: CS:GO Weapon Case 3,       gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
+  - {case: eSports 2013 Case,         gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
+  - {case: eSports 2013 Winter Case,  gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
+  - {case: eSports 2014 Summer Case,  gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
+
+# =============================================================================
+# MAP COLLECTIONS — Covert skins but NO gold output (the exclusion set).
+# A gold trade-up change does NOT move these reds. NOT exhaustive — the point
+# is the principle: souvenir/map collections have no knife/glove tier.
+# =============================================================================
+map_collections_no_gold:
+  - The Dust 2 Collection
+  - The Mirage Collection
+  - The Cache Collection          # relevant to the 2026-07-09 forward test
+  - The Cobblestone Collection
+  - The Overpass Collection
+  - The Nuke Collection
+  - The Inferno Collection
+  - The Train Collection
+  - The Vertigo Collection
+  - The Ancient Collection
+  - The Italy Collection
+  - The Lake Collection
+  - The Safehouse Collection
+  - The Assault Collection
+  - The Militia Collection
+  - The Office Collection
+  - The Baggage Collection

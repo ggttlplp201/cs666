@@ -183,6 +183,8 @@ class RuleScore:
     hits: int = 0
     returns: list = field(default_factory=list)   # net traded returns
     data_gaps: int = 0
+    benchmark: float = 0.0        # placebo mean — the "do nothing" bar the rule
+                                 # must beat, not just clear zero (set by the runner)
 
     @property
     def n(self) -> int:
@@ -205,16 +207,27 @@ class RuleScore:
         return self.hits / self.scoreable if self.scoreable else None
 
     @property
+    def edge_over_benchmark(self) -> float | None:
+        """Mean net return minus the placebo (buying random dates). This — not
+        absolute return — is the real edge: a rule that returns +4% when
+        random dates also return +4% has captured market beta, not alpha."""
+        return None if self.mean is None else self.mean - self.benchmark
+
+    @property
     def verdict(self) -> str:
         if self.scoreable == 0:
             return "DATA-GAP / untested"
         if not self.returns:
             return f"directional-only ({self.hits}/{self.scoreable})"
+        edge = self.edge_over_benchmark
+        # Beating ZERO is not enough — must beat the placebo (doing nothing).
+        if edge <= 0:
+            return f"DO-NOT-TRADE (no edge over placebo {self.benchmark:+.1%})"
         if self.mean <= 0:
             return "DO-NOT-TRADE (fails net of fees+lock)"
         if self.n < 3 or len(self.events) < 2:
-            return "needs-more-data (positive but thin)"
-        return "TRADE"
+            return f"needs-more-data (edge {edge:+.1%} over placebo, thin n={self.n})"
+        return f"TRADE (edge {edge:+.1%} over placebo)"
 
 
 def run_event_study(
@@ -515,7 +528,14 @@ def main(argv: list[str] | None = None) -> int:
               f"  {o.candidate.direction.value}"
               f"  {'HIT' if o.direction_hit else 'miss'}{trade}{tag}")
 
-    print("\n== PER-RULE SCORECARD (out-of-sample + flagged semi; in-sample excluded) ==")
+    # The placebo IS the benchmark: verdicts must beat "buy random dates",
+    # not merely clear zero (the finding that a +4% BUFF result matched a +4%
+    # placebo — no alpha, just beta).
+    placebo_mean = statistics.mean(placebo) if placebo else 0.0
+    for s in scores.values():
+        s.benchmark = placebo_mean
+    print(f"\n== PER-RULE SCORECARD [{args.source}] — verdict is edge OVER "
+          f"placebo ({placebo_mean:+.1%}); in-sample excluded ==")
     header = (f"{'rule':38} {'conf':7} {'events':6} {'hit-rate':9} "
               f"{'mean':8} {'median':8} {'worst':8} {'n':3}  verdict")
     print(header)

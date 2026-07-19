@@ -189,7 +189,13 @@ class TestEventStudy:
         assert s.mean == pytest.approx(0.04)
         assert s.median == pytest.approx(0.04)
         assert s.worst == pytest.approx(-0.02)
-        assert s.verdict == "TRADE"
+        # benchmark defaults to 0 → edge +4% beats placebo → TRADE
+        assert s.verdict.startswith("TRADE")
+        assert s.edge_over_benchmark == pytest.approx(0.04)
+        # but if the placebo also returns +4%, there is NO edge → DO-NOT-TRADE
+        s.benchmark = 0.04
+        assert "no edge over placebo" in s.verdict
+        s.benchmark = 0.0
         s.returns = [-0.05]
         assert "DO-NOT-TRADE" in s.verdict
 

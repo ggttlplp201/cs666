@@ -183,12 +183,14 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = Path(__file__).resolve().parents[2]
     config = Config.load(repo_root, system="system_a")
     parser = argparse.ArgumentParser(description="Exit-policy study")
+    parser.add_argument("--source", default="steam",
+                        help="price series source: steam | buff_iflow")
     parser.add_argument("--db", type=Path,
                         default=repo_root / config.require("data.snapshot_poller")["db_path"])
     args = parser.parse_args(argv)
     store = SnapshotStore(args.db)
 
-    stats = spread_stats(store)
+    stats = spread_stats(store, source=args.source)
     spreads = {s.item: s.median for s in stats}
     median_spread = statistics.median(s.median for s in stats)
     rules = RulesTable.load(repo_root / config.require("system_a.rules_table_path"))
@@ -202,6 +204,7 @@ def main(argv: list[str] | None = None) -> int:
         buff_fee_pct=config.require("costs.buff_fee_pct"),
         buff_fee_history=config.get("costs.fee_history", []),
         steam_fee_pct=config.require("costs.steam_fee_pct"),
+        source=args.source,
     )
     trades, magnitudes_by_trade = [], {}
     events_by_date = {str(e["date"]): e for e in rules.historical_events}
@@ -220,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
         weapon = item.split(" |")[0]
         magnitudes_by_trade[key] = stated.get(weapon)
 
-    results = run_policies(store, trades, spreads, config)
+    results = run_policies(store, trades, spreads, config, source=args.source)
     policies = ([f"fixed_{h}d" for h in FIXED_HORIZONS]
                 + [f"managed_N{n}" for n in THESIS_NS])
 
@@ -254,14 +257,26 @@ def main(argv: list[str] | None = None) -> int:
               f"baseline {statistics.mean(b for _, b in pairs):+.1%}  "
               f"delta {statistics.mean(deltas):+.1%}")
 
-    print("\n== TRADE-UP CLASS 2025-10-22 (+ 2025-10-30 echo) — items from the "
-          "table's observed text ==")
+    print(f"\n== TRADE-UP CLASS 2025-10-22 (+ 2025-10-30 echo) [{args.source}] ==")
+    from system_a.collections import load_collection_map
+    cmap = load_collection_map(
+        repo_root / "config" / "trade_up_collections.yaml", verified_only=True
+    )
+    if not cmap.verified:
+        print("  ⚠ collection map is RESEARCHED-BUT-UNVERIFIED (verified_by_leon: "
+              "false) — reds below are from verified-flagged cases only.")
+    # Derive affected reds = universe items that are known gold-case Coverts.
+    reds = [i for i in universe if cmap.is_gold_case_covert(i)] or TRADE_UP_REDS
+    for item in reds:
+        gt = cmap.gold_type_for(item)
+        print(f"  affected red: {item}"
+              + (f"  → {gt} case" if gt else "  (from observed text)"))
     event_ts = _event_ts("2025-10-22")
     tu_trades = []
-    for item in TRADE_UP_REDS:
-        series = store.series(item, source="steam")
+    for item in reds:
+        series = store.series(item, source=args.source)
         if not series:
-            print(f"  NO DATA: {item} — add to config/steam_backtest_items.txt")
+            print(f"  NO DATA: {item}")
             continue
         bar = _bar_after(series, event_ts, max_delay_days=3.0)
         if bar is None:
@@ -270,7 +285,7 @@ def main(argv: list[str] | None = None) -> int:
         spread = spreads.get(item, median_spread)
         tu_trades.append((item, "2025-10-22", bar[0], bar[1] * (1 + spread / 2)))
     if tu_trades:
-        tu_results = run_policies(store, tu_trades, spreads, config)
+        tu_results = run_policies(store, tu_trades, spreads, config, source=args.source)
         _policy_table(tu_results, policies)
         for t in tu_results:
             best = max(t.nets, key=lambda p: t.nets[p])
@@ -278,9 +293,9 @@ def main(argv: list[str] | None = None) -> int:
                   f"(exit rule: {t.exit_rules.get(best, '-')})")
     echo_ts = _event_ts("2025-10-30")
     for item in TRADE_UP_KNIVES:
-        series = store.series(item, source="steam")
+        series = store.series(item, source=args.source)
         if not series:
-            print(f"  ECHO NO DATA: {item} — add to config/steam_backtest_items.txt")
+            print(f"  ECHO NO DATA: {item}")
             continue
         before = _bar_at_or_before(series, echo_ts)
         after = _bar_after(series, echo_ts + 7 * DAY)
