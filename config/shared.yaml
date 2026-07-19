@@ -143,6 +143,17 @@ data:
     request_gap_seconds: 4.0           # Steam 429s aggressively; be polite
     backoff_start_seconds: 60.0        # exponential from here on 429, max 5 retries
     source_tag: steam                  # store rows tagged so Steam never mixes with BUFF
+  iflow_archive:                       # FREE historical BUFF bid/ask+ladders (src/shared/iflow_history.py)
+    # iflow.work Datadump Priority Archive: twice-daily snapshots 2022-04-18 →
+    # 2026-05-20, USD-normalized, keyless. Rows land as source=buff_iflow.
+    base_url: https://api.iflow.work/export
+    dir_name: priority_archive
+    cache_dir: var/iflow_archive
+    request_gap_seconds: 1.0
+    source_tag: buff_iflow
+    event_window_pre_days: 30          # files pulled around each historical event
+    event_window_post_days: 65
+    files_per_day: 1                   # 1 = daily sampling (archive has 2/day)
 
 # --- Execution (path chosen in HANDOFF; credentials in .env) ------------------
 execution:

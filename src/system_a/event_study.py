@@ -434,6 +434,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Event-study backtest (rules table §3)")
     parser.add_argument("--db", type=Path,
                         default=repo_root / config.require("data.snapshot_poller")["db_path"])
+    parser.add_argument("--source", default="steam",
+                        help="price series source: steam | buff_iflow")
     args = parser.parse_args(argv)
 
     # The event study measures EVERY rule/pair, including ones config has
@@ -445,9 +447,9 @@ def main(argv: list[str] | None = None) -> int:
         {line.strip() for line in seed.read_text().splitlines() if line.strip()}
     )
     store = SnapshotStore(args.db)
-    if not store.counts_by_source().get("steam"):
-        print("no source='steam' rows in the store — run:  PYTHONPATH=src "
-              "python -m shared.steam_history   (needs STEAM_LOGIN_SECURE)")
+    if not store.counts_by_source().get(args.source):
+        print(f"no source='{args.source}' rows in the store — run "
+              "shared.steam_history or shared.iflow_history first")
         return 1
 
     lock_days = config.require("cooldown.trade_lock_days")
@@ -458,13 +460,15 @@ def main(argv: list[str] | None = None) -> int:
         buff_fee_pct=config.require("costs.buff_fee_pct"),
         buff_fee_history=config.get("costs.fee_history", []),
         steam_fee_pct=steam_fee,
+        source=args.source,
     )
 
     oos = [o for o in outcomes if o.sample_class == "out_of_sample"
            and o.net_pnl_pct is not None]
     semi = [o for o in outcomes if o.sample_class == "semi_in_sample"
             and o.net_pnl_pct is not None]
-    print("== HEADLINE: OUT-OF-SAMPLE TRADES (Steam 15% fee, lock from fill) ==")
+    fee_label = "Steam 15% fee" if args.source == "steam" else "era BUFF fee, USD prices"
+    print(f"== HEADLINE: OUT-OF-SAMPLE TRADES [{args.source}] ({fee_label}; lock from fill) ==")
     if oos:
         rets = [o.net_pnl_pct for o in oos]
         print(f"n={len(rets)}  mean {statistics.mean(rets):+.1%}  "
@@ -477,7 +481,9 @@ def main(argv: list[str] | None = None) -> int:
               f"n={len(rets)}  mean {statistics.mean(rets):+.1%}")
 
     ct_portfolio = [n for n in universe if n.startswith("M4A4 |")]
-    placebo = placebo_study(rules, store, ct_portfolio, lock_days, steam_fee)
+    control_fee = steam_fee if args.source == "steam" else 0.025
+    placebo = placebo_study(rules, store, ct_portfolio, lock_days, control_fee,
+                            source=args.source)
     if placebo:
         print(f"\n== PLACEBO (same mechanics, {len(placebo)} random-date obs, "
               f"same M4A4 portfolio) ==")
@@ -486,7 +492,8 @@ def main(argv: list[str] | None = None) -> int:
 
     oos_dates = sorted({o.event_date for o in outcomes
                         if o.sample_class == "out_of_sample"})
-    baseline = buy_and_hold_baseline(store, universe, oos_dates, lock_days, steam_fee)
+    baseline = buy_and_hold_baseline(store, universe, oos_dates, lock_days,
+                                     control_fee, source=args.source)
     print("\n== BUY-AND-HOLD BASELINE (all universe items, same windows) ==")
     for date, rets in baseline.items():
         if rets:
