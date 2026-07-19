@@ -175,7 +175,8 @@ class TestEventStudy:
             rules, SnapshotStore(), [M4A4, M4A1S], **STUDY_KW,
         )
         assert any("LIVE FORWARD TEST" in n for n in notes)
-        assert any("collection→gold map missing" in n for n in notes)
+        # trade-up not mapped when no collection_map is passed (default None)
+        assert any("trade_up_pool_change not mapped" in n for n in notes)
         assert any("produced no signals" in n for n in notes)   # 2025-10-30 echo
         assert all(o.net_pnl_pct is None for o in outcomes)
 

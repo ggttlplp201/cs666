@@ -239,6 +239,7 @@ def run_event_study(
     buff_fee_history: list[dict],
     steam_fee_pct: float,
     source: str = "steam",
+    collection_map=None,   # system_a.collections.CollectionMap; None → skip trade-up
 ) -> tuple[list[PredictionOutcome], dict[str, RuleScore], list[str]]:
     """Scorecard covers OUT-OF-SAMPLE (+flagged semi-in-sample) events only;
     correctness-only events produce outcomes but never touch the scores."""
@@ -271,11 +272,23 @@ def run_event_study(
             continue
         for signal in signals:
             if signal.event_rule == "trade_up_pool_change":
+                if collection_map is None:
+                    scores.setdefault(
+                        "trade_up_pool_change", RuleScore("trade_up_pool_change")
+                    ).data_gaps += 1
+                    notes.append(
+                        f"{date}: trade_up_pool_change not mapped — pass a "
+                        "collection_map (trade-up validated separately by "
+                        "system_a.trade_up_control)."
+                    )
+                    continue
                 prices = {}
                 for n in universe:
                     bar = _bar_at_or_before(series_cache[n], ts)
                     prices[n] = bar[1] if bar else 0.0
-                candidates = rules.map_trade_up_signal(signal, universe, prices, [])
+                candidates = rules.map_trade_up_signal(
+                    signal, universe, prices, collection_map
+                )
                 if not candidates:
                     score = scores.setdefault(
                         "trade_up_pool_change", RuleScore("trade_up_pool_change")

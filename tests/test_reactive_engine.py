@@ -128,20 +128,30 @@ class TestRules:
         candidates = rules.map_signal(_leak(items=("M4A1-S",)), UNIVERSE)
         assert candidates and all(not c.tradeable for c in candidates)
 
-    def test_trade_up_log_only_while_collection_map_missing(self):
+    def test_trade_up_maps_gold_case_coverts_from_map(self):
+        from pathlib import Path
+        from system_a.collections import load_collection_map
         rules = _rules()
+        cmap = load_collection_map(
+            Path(__file__).resolve().parents[1] / "config" / "trade_up_collections.yaml"
+        )
+        # universe with a gold-case covert (MP9 Starlight, D&N) + a non-covert
+        universe = ["MP9 | Starlight Protector (Field-Tested)", M4A4]
         signal = Signal(
-            tier=2, type=SignalType.CONFIRMED_UPDATE, items=(M4A4, M4A1S),
+            tier=2, type=SignalType.CONFIRMED_UPDATE, items=(),
             direction=Direction.BULLISH, confidence=1.0, first_seen_ts=T0,
             event_rule="trade_up_pool_change",
         )
         candidates = rules.map_trade_up_signal(
-            signal, UNIVERSE, {M4A4: 100.0, M4A1S: 50.0}, collections_with_gold=[]
+            signal, universe, {"MP9 | Starlight Protector (Field-Tested)": 40.0,
+                               M4A4: 100.0}, cmap
         )
-        assert candidates and all(not c.tradeable for c in candidates)
-        assert "COLLECTION→GOLD MAP MISSING" in candidates[0].evidence
-        # cheap reds outrank expensive ones
-        assert candidates[0].market_hash_name == M4A1S
+        names = {c.market_hash_name for c in candidates}
+        assert "MP9 | Starlight Protector (Field-Tested)" in names  # gold-case covert
+        assert M4A4 not in names                                    # not a covert
+        assert all(c.direction == Direction.BULLISH for c in candidates)
+        assert all(c.tradeable for c in candidates)  # map is corroborated
+        assert "knife-case covert" in candidates[0].evidence
 
     def test_calendar_rule_never_directional(self):
         rules = _rules()
@@ -392,3 +402,62 @@ def test_backtest_failed_pair_is_log_only_live():
     candidates = rules.map_signal(_leak(items=("AUG",)), universe)
     pair_candidates = [c for c in candidates if c.rule == "substitute_pair:scoped_rifles"]
     assert pair_candidates and all(not c.tradeable for c in pair_candidates)
+
+
+MP9 = "MP9 | Starlight Protector (Field-Tested)"
+
+
+class TestTradeUpEngine:
+    def _harness(self, tmp_path):
+        h = Harness(tmp_path)
+        # rebuild engine with a gold-case-covert universe
+        from system_a.engine import ReactiveEngine
+        h.engine = ReactiveEngine(
+            h.config, h.store, h.bus, h.backend, h.ledger, h.rules, h.gate,
+            h.provenance, universe=[MP9],
+        )
+        h.config.data["selection_filters"]["allow_unknown_volume"] = True
+        return h
+
+    def _seed(self, h, price, volume, days=25, start=T0):
+        for d in range(days):
+            h.store.insert([Item(MP9, price, round(price*0.97, 2), 200, 40,
+                                 volume, start + d*DAY)])
+
+    def test_trade_up_signal_buys_gold_case_covert_and_holds_long(self, tmp_path):
+        h = self._harness(tmp_path)
+        self._seed(h, 40.0, volume=None)   # no volume (iflow-like)
+        now = T0 + 24*DAY + 60
+        h.bus.publish(Signal(
+            tier=2, type=SignalType.CONFIRMED_UPDATE, items=(),
+            direction=Direction.BULLISH, confidence=0.95, first_seen_ts=now-60,
+            sources=("cs2_blog",), event_rule="trade_up_pool_change",
+        ))
+        h.cycle(now)
+        acts = h.actions()
+        # bought MP9 via trade-up, tagged long; NO right-side confirmation gate
+        assert ("buy_placed", MP9, "trade_up_pool_change") in acts
+        assert MP9 in h.engine._trade_up_items
+        assert h.ledger.position_qty(MP9) > 0
+        buy = next(r for r in h.provenance.read_all() if r["action"] == "buy_placed")
+        assert buy["inputs"]["hold"] == "long"
+
+    def test_trade_up_lot_not_taken_profit_at_15pct(self, tmp_path):
+        h = self._harness(tmp_path)
+        self._seed(h, 40.0, volume=None)
+        now = T0 + 24*DAY + 60
+        h.bus.publish(Signal(
+            tier=2, type=SignalType.CONFIRMED_UPDATE, items=(),
+            direction=Direction.BULLISH, confidence=0.95, first_seen_ts=now-60,
+            sources=("x",), event_rule="trade_up_pool_change",
+        ))
+        h.cycle(now)
+        assert h.ledger.position_qty(MP9) > 0
+        # price grinds +20% (past the disabled TP) but slow — long hold keeps it
+        for d in range(25, 34):
+            h.store.insert([Item(MP9, 40.0*(1+0.02*(d-24)), 40.0*(1+0.02*(d-24))*0.97,
+                                 200, 40, None, T0+d*DAY)])
+            h.cycle(T0 + d*DAY + 8*DAY + 60)   # after unlock, gradual rise
+        # take_profit is OFF for trade-up lots → not sold on a slow +20% grind
+        sells = [a for a in h.actions() if a[0] == "sell_placed" and a[2] == "take_profit"]
+        assert not sells

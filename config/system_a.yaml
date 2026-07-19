@@ -69,6 +69,18 @@ position_management:
     green_bar_volume_ratio: 1.5
     low_volume_ratio: 0.7
 
+# --- Trade-up event class (the one durable, spread-irrelevant System A play) --
+# 2025-10-22 covert→gold repriced the whole gold-case ladder +164% median over
+# ~60d (validated: durable, spread-irrelevant, no speed race, no fuel-selection
+# edge). Trade-up lots hold LONG — these keys override position_management for
+# them (deep-merged): no early take-profit (it would truncate a +164% runner),
+# long thesis window; keep the hard stop and euphoria/distribution exits.
+trade_up_collection_map: config/trade_up_collections.yaml
+trade_up_holding:
+  thesis_invalidation_days: 90     # give the durable repricing room (vs 14 default)
+  rules:
+    take_profit: false             # do NOT cap the runner at +10-15%
+
 # --- Rules table (content supplied by Builder 1; file path here) --------------
 rules_table_path: config/rules_table_a.yaml   # substitute pairs, event rules, labeled events
 

@@ -23,7 +23,7 @@ import json
 from datetime import datetime, timezone
 
 from shared.bus import SignalBus
-from shared.configuration import Config
+from shared.configuration import Config, _deep_merge
 from shared.execution import ExecutionBackend, reconcile
 from shared.indicators import bandwidth_widening, volume_price_state
 from shared.ledger import Ledger, Lot
@@ -84,6 +84,22 @@ class ReactiveEngine:
             self._load_echoes()
         )
         self._alerted_watch_keys: set[str] = set()
+        # Trade-up event class (the one durable, spread-irrelevant System A
+        # play): items bought via a trade_up_pool_change signal are held long
+        # (the +164% median built over ~60d), NOT flipped on the balance-patch
+        # TP/SL. Track them so exits use the trade_up_holding policy.
+        from system_a.collections import load_collection_map
+        map_path = config.get(
+            "system_a.trade_up_collection_map",
+            "config/trade_up_collections.yaml",
+        )
+        try:
+            self.collection_map = load_collection_map(
+                config.repo_root / map_path, verified_only=True
+            )
+        except FileNotFoundError:
+            self.collection_map = None
+        self._trade_up_items: set[str] = set()
 
     def _load_echoes(self) -> list[tuple[float, tuple[str, ...], str]]:
         if not self._echo_state_path.exists():
@@ -140,13 +156,11 @@ class ReactiveEngine:
 
     def _map(self, signal: Signal, snapshot: dict[str, Item]):
         if signal.event_rule == "trade_up_pool_change":
-            prices = {
-                n: i.buff_lowest_sell_cny for n, i in snapshot.items()
-            }
-            gating = self.config.get("system_a.rules_gating", {}) or {}
+            if self.collection_map is None:
+                return []
+            prices = {n: i.buff_lowest_sell_cny for n, i in snapshot.items()}
             return self.rules.map_trade_up_signal(
-                signal, self.tracked_items, prices,
-                gating.get("collections_with_gold", []),
+                signal, self.tracked_items, prices, self.collection_map,
             )
         return self.rules.map_signal(signal, self.tracked_items)
 
@@ -309,13 +323,19 @@ class ReactiveEngine:
         item = snapshot.get(name)
         if item is None:
             return
-        confirmation_rule = self._confirm_right_side(name)
-        if confirmation_rule != "confirmed":
-            self._log(
-                now_ts, "buy_refused", name, confirmation_rule, regime,
-                [_sig(signal)], inputs=rule_inputs,
-            )
-            return
+        is_trade_up = candidate.rule == "trade_up_pool_change"
+        # Trade-up events skip right-side confirmation: the mechanic change
+        # IS the signal, the repricing is durable over weeks (no momentum
+        # confirmation needed and none available on announcement day). Balance-
+        # patch candidates still require pattern-3 + band-widening.
+        if not is_trade_up:
+            confirmation_rule = self._confirm_right_side(name)
+            if confirmation_rule != "confirmed":
+                self._log(
+                    now_ts, "buy_refused", name, confirmation_rule, regime,
+                    [_sig(signal)], inputs=rule_inputs,
+                )
+                return
 
         price = item.buff_lowest_sell_cny
         # Request the largest qty the chase cap could allow; the gate shrinks.
@@ -337,9 +357,12 @@ class ReactiveEngine:
         fill = self.backend.place_buy(order)
         if fill:
             self.ledger.record_buy(fill)
+            if is_trade_up:
+                self._trade_up_items.add(name)  # long-hold exit policy
             self._log(
                 now_ts, "buy_placed", name, candidate.rule, regime, [_sig(signal)],
-                inputs={**rule_inputs, "qty": fill.qty, "price": fill.price_cny},
+                inputs={**rule_inputs, "qty": fill.qty, "price": fill.price_cny,
+                        "hold": "long" if is_trade_up else "bracketed"},
                 score=signal.confidence, order_id=order.client_order_id,
             )
 
@@ -409,6 +432,11 @@ class ReactiveEngine:
         exit study can measure per-rule edge (Shared §12)."""
         from system_a.position_manager import assess
         pm = self.config.require("system_a.position_management")
+        # Trade-up lots hold long (the durable +164% builds over ~60d) — no
+        # early take-profit, long thesis window. Balance-patch lots keep the
+        # standard brackets. Both still honor the hard stop. Deep-merge so the
+        # override only touches named keys, not whole nested dicts.
+        pm_trade_up = _deep_merge(pm, self.config.get("system_a.trade_up_holding", {}))
         indicators_cfg = self.config.require("indicators")
         brackets = self.config.require("brackets")
         for name in self.tracked_items:
@@ -416,11 +444,12 @@ class ReactiveEngine:
             if item is None:
                 continue
             series = self.store.series(name)
+            lot_pm = pm_trade_up if name in self._trade_up_items else pm
             for lot in self.ledger.sellable_lots(name, now_ts):
                 result = assess(
                     series, lot.buy_price,
                     held_days=(now_ts - lot.buy_ts) / 86400.0,
-                    pm=pm, indicators_cfg=indicators_cfg, brackets=brackets,
+                    pm=lot_pm, indicators_cfg=indicators_cfg, brackets=brackets,
                 )
                 inputs = {
                     "detail": result.detail,

@@ -232,28 +232,33 @@ class RulesTable:
         signal: Signal,
         universe: list[str],
         prices: dict[str, float],
-        collections_with_gold: list[str],
+        collection_map,   # system_a.collections.CollectionMap
     ) -> list[MappedCandidate]:
-        """trade_up_pool_change mapping — collection-aware per the table:
-        only reds in collections CONTAINING a gold-tier output react, and
-        cheap reds outrank expensive ones (priority = 1/price). The
-        collection→gold map is a table-§4 todo; while it is empty every
-        candidate is log-only (never invent the mapping)."""
+        """trade_up_pool_change mapping (validated 2026-07-19). A trade-up
+        MECHANIC change (like 2025-10-22 covert→gold) reprices the ENTIRE
+        gold-case rarity ladder — every gold-case Covert in the universe is a
+        bullish target, not a signal-specified list. Empirically the move is
+        driven by gold-case MEMBERSHIP, not fuel selection (coverts ≈
+        classifieds), so we buy the verified gold-case coverts we hold in the
+        universe. Cheap items outrank expensive (priority = 1/price). Log-only
+        until the collection map is corroborated."""
         rule = self.event_rules["trade_up_pool_change"]
-        gap_open = not collections_with_gold
-        tradeable = self.rule_tradeable("trade_up_pool_change") and not gap_open
+        tradeable = (
+            self.rule_tradeable("trade_up_pool_change") and collection_map.verified
+        )
         evidence = " ".join(str(rule.raw.get("magnitude", "")).split())
-        if gap_open:
-            evidence = "COLLECTION→GOLD MAP MISSING (rules table §4 todo) — " + evidence
+        if not collection_map.verified:
+            evidence = "COLLECTION MAP UNVERIFIED — " + evidence
         candidates = []
-        for name in signal.items:
-            if name not in universe:
+        for name in sorted(universe):
+            if not collection_map.is_gold_case_covert(name):
                 continue
+            gold = collection_map.gold_type_for(name)
             price = prices.get(name, 0.0)
             candidates.append(
                 MappedCandidate(
-                    name, signal.direction, "trade_up_pool_change",
-                    rule.confidence, evidence, tradeable,
+                    name, Direction.BULLISH, "trade_up_pool_change",
+                    rule.confidence, f"{gold}-case covert; {evidence}", tradeable,
                     priority=(1.0 / price) if price > 0 else 0.0,
                 )
             )
