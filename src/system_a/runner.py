@@ -47,7 +47,7 @@ def load_universe(config: Config) -> list[str]:
     )
 
 
-def build_stack(config: Config, posts_path: Path | None):
+def build_stack(config: Config, posts_path: Path | None, live_monitor: bool = False):
     store = SnapshotStore()
     bus = SignalBus()
     backend = PaperBackend(
@@ -70,6 +70,9 @@ def build_stack(config: Config, posts_path: Path | None):
         universe=universe,
     )
     sources = [FileReplaySource(posts_path)] if posts_path else []
+    if live_monitor or config.get("system_a.monitor.live_source", False):
+        from system_a.monitor import ScraplingSource
+        sources.append(ScraplingSource())   # optional; degrades if scrapling absent
     monitor = MonitorAgent(
         sources=sources,
         classifier=KeywordClassifier(),

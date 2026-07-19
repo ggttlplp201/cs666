@@ -138,3 +138,33 @@ def test_contradictory_directions_never_corroborate():
     signals = agent._emit(now_ts=200.0)
     assert len(signals) == 2                      # separate signals, not merged
     assert all(len(s.sources) == 1 for s in signals)
+
+
+class TestTradeUpAndScrapling:
+    def test_trade_up_mechanic_announcement_no_item_needed(self):
+        c = KeywordClassifier()
+        cl = c.classify(_post(
+            "CS2 update: Trade Up Contracts can now craft Covert knives and gloves. "
+            "Update is live.", source="official"), KNOWN)
+        assert cl is not None
+        assert cl.event_rule == "trade_up_pool_change"
+        assert cl.type == SignalType.OFFICIAL_ANNOUNCEMENT
+        assert cl.items == ()          # mechanic change → no specific item
+        assert cl.direction == Direction.BULLISH
+
+    def test_ordinary_trade_up_chatter_ignored(self):
+        c = KeywordClassifier()
+        # "trade up" without gold-crafting language must not fire the event class
+        assert c.classify(_post("did a cs2 trade up and got a blue"), KNOWN) is None
+
+    def test_scrapling_source_degrades_without_dep(self, monkeypatch):
+        # simulate scrapling missing → poll() returns [] (never raises)
+        import builtins
+        from system_a.monitor import ScraplingSource
+        real_import = builtins.__import__
+        def fake(name, *a, **k):
+            if name.startswith("scrapling"):
+                raise ImportError("scrapling not installed")
+            return real_import(name, *a, **k)
+        monkeypatch.setattr(builtins, "__import__", fake)
+        assert ScraplingSource().poll() == []

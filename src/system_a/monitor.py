@@ -83,6 +83,55 @@ class XApiSource:
         )
 
 
+class ScraplingSource:
+    """Live news/announcement source via Scrapling (optional dependency).
+
+    Fetches official CS2 announcements — the highest-signal, lowest-friction
+    source for item-access / trade-up mechanic changes (the one event class
+    System A trades). Steam's news API is JSON, official, and needs no
+    anti-bot; Scrapling's stealth layer is reserved for harder sources
+    (Reddit, X, CN forums) added later.
+
+    Isolated by design: if scrapling isn't installed, or a fetch fails,
+    poll() returns [] and the monitor keeps running on its other sources —
+    exactly how the keyless sources degrade. Nothing here can break the stack.
+    """
+
+    STEAM_NEWS = ("https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
+                  "?appid=730&count={count}&maxlength=1200")
+
+    def __init__(self, handle: str = "Steam news (app 730)", count: int = 15):
+        self.handle = handle
+        self.count = count
+        self._seen: set[str] = set()
+
+    def poll(self) -> list[RawPost]:
+        try:
+            from scrapling.fetchers import Fetcher
+        except Exception:
+            return []   # optional dep absent → degrade silently
+        try:
+            resp = Fetcher.get(self.STEAM_NEWS.format(count=self.count), timeout=30)
+            raw = getattr(resp, "body", None) or getattr(resp, "text", "")
+            if isinstance(raw, bytes):
+                raw = raw.decode("utf-8", "replace")
+            items = json.loads(raw)["appnews"]["newsitems"]
+        except Exception:
+            return []   # network/parse failure → degrade, never raise
+        posts = []
+        for it in items:
+            key = str(it.get("gid") or it.get("url"))
+            if key in self._seen:
+                continue
+            self._seen.add(key)
+            text = f"{it.get('title', '')}. {it.get('contents', '')}"
+            posts.append(RawPost(
+                source=self.handle, platform="official_blog",
+                text=text, ts=float(it.get("date", 0)),
+            ))
+        return posts
+
+
 class Classifier(Protocol):
     def classify(self, post: RawPost, known_items: list[str]) -> Classification | None: ...
 
@@ -94,6 +143,9 @@ _OFFICIAL = re.compile(r"\b(release notes|update is live|patch notes|shipped)\b"
 _HYPE = re.compile(r"\b(to the moon|100%|guaranteed|easy money|all[- ]?in|pump\w*)\b", re.I)
 _CS2 = re.compile(r"\b(cs2|counter-?strike|skin|case|knife|glove|valve)\b", re.I)
 _TRADE_UP = re.compile(r"\btrade[- ]?up\b|\bcontract\b", re.I)
+# Gold-crafting language — distinguishes a mechanic change (5 coverts → knife/
+# glove) from routine trade-up mentions. Fires the durable-edge event class.
+_TRADE_UP_GOLD = re.compile(r"\b(knife|knives|glove|gloves|covert|gold|rare special)\b", re.I)
 # Watch list: a Cache-collection announcement resolves the map_pool_change
 # ambiguity (rules table §2/§3) — alert, never trade.
 _WATCH = re.compile(r"\bcache\s+collection\b", re.I)
@@ -110,6 +162,18 @@ class KeywordClassifier:
             return Classification(
                 SignalType.ATTENTION, ("Cache Collection",), Direction.UNCLEAR,
                 0.7, event_rule="map_pool_change",
+            )
+        # Trade-up MECHANIC change: about the mechanic, not a named item, and
+        # our only durable-edge event class. Emit even with no weapon named —
+        # the engine maps it to all gold-case coverts. Gated on knife/glove
+        # crafting language so ordinary "trade up" chatter doesn't fire.
+        if _TRADE_UP.search(text) and _TRADE_UP_GOLD.search(text):
+            kind = (SignalType.OFFICIAL_ANNOUNCEMENT if _OFFICIAL.search(text)
+                    else SignalType.UPDATE_LEAK)
+            conf = 0.9 if kind == SignalType.OFFICIAL_ANNOUNCEMENT else 0.6
+            return Classification(
+                kind, (), Direction.BULLISH, conf,
+                event_rule="trade_up_pool_change",
             )
         items = tuple(
             name for name in known_items

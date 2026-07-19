@@ -21,6 +21,8 @@ ml = ["xgboost"]
 plot = ["matplotlib"]
 dev = ["pytest"]
 dashboard = ["streamlit"]   # read-only research dashboard (make dashboard)
+monitor = ["scrapling[fetchers]"]   # live news/announcement scraping (optional;
+                                    # monitor degrades gracefully without it)
 
 [tool.setuptools.packages.find]
 where = ["src"]
