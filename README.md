@@ -130,6 +130,10 @@ Start on **Overview** — a plain-language, one-screen summary of what we found
    live forward tests (2026-07-09 Cache/Armory).
 6. **Prediction log** — browsable provenance: which signals fired, which rule
    decided, and why.
+7. **Trade-up class** — the one viable event class: negative-control results,
+   collection-map coverage, last end-to-end paper run.
+8. **Monopoly watch** — item classes ranked by monopolization (high barrier +
+   thin supply) — the predictive read on Valve's likely next access target.
 
 A persistent banner shows the operating mode (LOG-ONLY), spend to date ($0),
 and how many rules are currently DO-NOT-TRADE.

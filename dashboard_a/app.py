@@ -158,9 +158,26 @@ page = st.sidebar.radio(
     "Section",
     ["0 · Overview", "1 · Data health", "2 · Live market", "3 · Spread analysis",
      "4 · Rule scorecard", "5 · Event timeline", "6 · Prediction log",
-     "7 · Trade-up class ★"],
+     "7 · Trade-up class ★", "8 · Monopoly watch"],
 )
 frame = buff_frame()
+
+
+@st.cache_data(ttl=600)
+def concentration_ranking():
+    """Monopolization score per class from the latest iflow snapshot.
+    Returns (ranking rows, snapshot name, opened classes) or None."""
+    from system_a.concentration import (
+        _latest_snapshot, load_snapshot, rank_classes,
+    )
+    config = load_config()
+    cache = REPO_ROOT / config.require("data.iflow_archive")["cache_dir"]
+    snap = _latest_snapshot(cache)
+    if snap is None:
+        return None
+    ranking = rank_classes(load_snapshot(snap))
+    opened = set(config.get("system_a.concentration", {}).get("opened_classes", []))
+    return ranking, snap.name, opened
 
 
 @st.cache_data(ttl=300)
@@ -506,3 +523,37 @@ elif page == "7 · Trade-up class ★":
         buys = sum(1 for l in paper.read_text().splitlines()
                    if l.strip() and json.loads(l)["action"] == "buy_placed")
         c3.metric("Last paper run — positions", buys, help="trade_up_paper.py")
+
+elif page == "8 · Monopoly watch":
+    st.header("Monopoly watch")
+    conc = concentration_ranking()
+    if conc is None:
+        st.caption("No iflow snapshots — run `python -m shared.iflow_history`.")
+    else:
+        ranking, snap_name, opened = conc
+        df = pd.DataFrame([{
+            "class": c.cls, "score": c.score, "med price $": c.median_price,
+            "med listings": c.median_listings, "n": c.n,
+            "status": "opened 2025-10-22" if c.cls in opened else "",
+        } for c in ranking])
+        st.altair_chart(
+            _magnitude_bar(
+                df.assign(label=df["class"] + df["status"].map(
+                    lambda s: "  (opened)" if s else "")),
+                "label", "score", "monopolization score (0–1)",
+                highlight=(df.iloc[0]["class"] + "  (opened)"
+                           if df.iloc[0]["class"] in opened else df.iloc[0]["class"])),
+            use_container_width=True,
+        )
+        st.caption(f"High price barrier + thin supply = monopolizable. "
+                   f"Snapshot {snap_name[:10]}. Higher = more like pre-access knives.")
+        st.dataframe(
+            df, use_container_width=True, hide_index=True,
+            column_config={"score": st.column_config.NumberColumn(format="%.2f"),
+                           "med price $": st.column_config.NumberColumn(format="$%.0f")},
+        )
+        cands = [c for c in ranking if c.cls not in opened]
+        if cands and ranking[0].score - cands[0].score > 0.2:
+            st.caption("Monopolization sits in classes already opened "
+                       "(knives/gloves). Remaining high-barrier targets "
+                       "(Contraband/discontinued trophies) are iflow's blind spot.")

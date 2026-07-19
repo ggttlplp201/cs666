@@ -69,6 +69,12 @@ position_management:
     green_bar_volume_ratio: 1.5
     low_volume_ratio: 0.7
 
+# --- Anti-monopoly concentration tracker (Leon's predictive thesis) -----------
+concentration:
+  # Classes Valve has ALREADY opened access to (excluded from the "next target"
+  # call). Knives + gloves both got covert→gold trade-up access on 2025-10-22.
+  opened_classes: [Knife, Gloves]
+
 # --- Trade-up event class (the one durable, spread-irrelevant System A play) --
 # 2025-10-22 covert→gold repriced the whole gold-case ladder +164% median over
 # ~60d (validated: durable, spread-irrelevant, no speed race, no fuel-selection
