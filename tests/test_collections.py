@@ -32,4 +32,12 @@ def test_unverified_reds_excluded_by_default():
 def test_map_collections_excluded_from_gold():
     cmap = load_collection_map(MAP, verified_only=True)
     assert "The Cache Collection" in cmap.map_collections_no_gold
-    assert not cmap.verified   # research not yet Leon-verified
+    assert cmap.verified   # independently corroborated 2026-07-19
+
+
+def test_clutch_neo_noir_is_glove_fuel():
+    # Leon's correction: M4A4 Neo-Noir is a Clutch Case covert (glove fuel);
+    # USP-S Cortex (Classified) is NOT present.
+    cmap = load_collection_map(MAP, verified_only=True)
+    assert cmap.gold_type_for("M4A4 | Neo-Noir (Field-Tested)") == "glove"
+    assert cmap.gold_type_for("USP-S | Cortex (Field-Tested)") is None

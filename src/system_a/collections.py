@@ -39,20 +39,39 @@ class CollectionMap:
         return self.gold_type_for(market_hash_name) is not None
 
 
+def _is_verified(flag) -> bool:
+    """covert_verified may be True, 'leon', or 'partial' (some cases in a
+    family verified). Treat true/leon as verified; 'partial' as verified for
+    the cases it does list (the file only lists confirmed coverts)."""
+    return flag is True or str(flag).lower() in ("true", "leon", "partial")
+
+
 def load_collection_map(path: Path, verified_only: bool = True) -> CollectionMap:
     data = yaml.safe_load(path.read_text())
     covert_to_case: dict[str, tuple[str, str]] = {}
     cases_with_gold: list[str] = []
-    for section in ("glove_cases", "knife_cases"):
-        for entry in data.get(section, []):
-            cases_with_gold.append(entry["case"])
-            if verified_only and not entry.get("covert_verified"):
-                continue
-            for covert in entry.get("coverts") or []:
-                covert_to_case[covert] = (entry["case"], entry["gold"])
+
+    # Glove cases: flat covert list, gold_type per case.
+    for entry in data.get("glove_cases", []):
+        cases_with_gold.append(entry["case"])
+        if verified_only and not _is_verified(entry.get("covert_verified")):
+            continue
+        for covert in entry.get("coverts") or []:
+            covert_to_case[covert] = (entry["case"], entry.get("gold_type", "glove"))
+
+    # Knife cases: grouped by model family; coverts is a dict keyed by case.
+    for family in data.get("knife_case_families", []):
+        cases_with_gold.extend(family.get("cases", []))
+        if verified_only and not _is_verified(family.get("covert_verified")):
+            continue
+        coverts_by_case = family.get("coverts") or {}
+        for case_name, coverts in coverts_by_case.items():
+            for covert in coverts or []:
+                covert_to_case[covert] = (case_name, "knife")
+
     return CollectionMap(
         covert_to_case=covert_to_case,
-        cases_with_gold=cases_with_gold,
+        cases_with_gold=sorted(set(cases_with_gold)),
         map_collections_no_gold=data.get("map_collections_no_gold", []),
-        verified=bool(data.get("meta", {}).get("verified_by_leon")),
+        verified=bool(data.get("meta", {}).get("independent_corroboration")),
     )

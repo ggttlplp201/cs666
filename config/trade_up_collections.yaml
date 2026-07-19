@@ -1,161 +1,446 @@
 # config/trade_up_collections.yaml
-# CS2 trade-up collection → gold-output map (rules table §4 todo).
+# CS2 trade-up collection → gold-output map. Rules table §4 dependency.
 #
-# ⚠⚠ RESEARCHED BY CLAUDE, NOT YET VERIFIED BY LEON. Every entry below is from
-# public sources (listed under `sources:`), assembled 2026-07-19. The
-# case→gold-TYPE backbone (knife vs glove per case) is high-confidence and
-# well-documented. The per-case COVERT skin lists are verified only where
-# `covert_verified: true`; entries with `covert_verified: false` have the
-# gold-type confirmed but the red-skin list still needs your check/fill.
-# DO NOT trade off this until verified.
+# VERIFICATION STATUS per entry:
+#   covert_verified: true         → corroborated against stash.clash.gg case pages
+#                                   (cross-checked with a 2nd source where available)
+#   covert_verified: leon         → Leon confirmed personally
+#   covert_verified: partial      → some cases in the family verified, others listed
+#                                   under unverified_legacy_cases at the bottom.
 #
-# MECHANIC (late-2025 "Retake" update — the change the rules table's
-# 2025-10-22 event models): 5 Covert (red) skins from the SAME case trade up
-# to one gold-tier item (knife OR glove) from that case's rare-special pool.
-# Output float = average of the 5 inputs. StatTrak in → StatTrak out (knives
-# only; gloves have no StatTrak). This is why the event crashed knives/gloves
-# (supply expands) and pumped cheap Coverts (they became viable fuel).
+# NO GUESSES APPEAR IN THIS FILE. Every Covert listed is sourced. Anything not
+# confirmed is named in unverified_legacy_cases and left empty rather than filled.
 #
-# COLLECTION-AWARENESS (what the rule needs): only Coverts in a case whose
-# gold tier is knives/gloves are affected. MAP COLLECTIONS (Dust II, Mirage,
-# Cache, …) have Covert skins but NO gold output — their reds do NOT react to
-# a gold trade-up change. See `map_collections_no_gold` at the bottom.
+# ============================================================================
+# MECHANIC — corrected 2026-07-19. Two points here were WRONG in the first
+# draft and would have broken EV calculation. Read before using.
+# ============================================================================
+#
+# 1. COVERT TRADE-UP: 5 Covert skins → 1 gold-tier item (knife or gloves).
+#    All other rarity tiers still use 10 inputs. Covert is the exception.
+#
+# 2. ★ MIXING COLLECTIONS IS ALLOWED ★
+#    Each input carries 1/5 = 20% of the collection weight. Output collection is
+#    chosen PROPORTIONALLY to input composition:
+#        5 from A            → 100% collection A
+#        3 from A + 2 from B → 60% A / 40% B
+#    Same-collection is a CHOICE for control, not a requirement. Mixing is a
+#    strategy lever: cheap fuel from one case can point at a high-value pool in
+#    another. Any EV model assuming single-collection inputs is wrong.
+#
+# 3. ★ DILUTION IS THE ECONOMIC DRIVER ★
+#    A Covert's crafting value = which gold pool it points into x how many
+#    outcomes that pool has. Single-model pools (Breakout = Butterfly only) are
+#    premium fuel; wide pools (Chroma = 5 models incl. cheap Gut Knife) are cheap
+#    fuel. This — not "is it red" — is why Oct 2025 repriced some Coverts 10-20x
+#    and others barely. NOTE: concentration only helps if the model is VALUABLE
+#    (Shadow Case is single-model but Shadow Daggers are cheap).
+#
+# 4. StatTrak: 5 ST inputs → ST KNIFE only (gloves have no StatTrak).
+#    Cannot mix ST and non-ST in one contract.
+#
+# 5. FLOAT: output float = normalized average of the 5 input floats, mapped onto
+#    the output skin's own min/max float range. Wear drives 2-10x value spread.
+#
+# 6. SOUVENIR items cannot be used in any trade-up. Exclude from input scanning.
+#
+# 7. MAP/SOUVENIR COLLECTIONS HAVE NO GOLD TIER — their Coverts do not react to
+#    gold trade-up changes. See map_collections_no_gold (the exclusion set).
+#
+# OPEN QUESTION (verify in client — affects mixing math):
+#   What happens to the weight of an input from a no-gold collection? Does that
+#   20% produce nothing, or is the input rejected? Confirm before modelling
+#   mixed contracts that include map-collection Coverts.
 
 meta:
   researched: 2026-07-19
-  verified_by_leon: false
-  sources:
-    - https://tradeit.gg/blog/all-knife-cases-in-cs2/
-    - https://tradeit.gg/blog/all-glove-cases-in-cs2/
-    - https://cs.money/blog/trade/cs2-contract-guide-what-skins-give-which-knife/
-    - https://skin.land/blog/cs-trade-up-gloves-guide-which-skins-give-which-gloves/
-    - https://stash.clash.gg/skin-rarity/Covert   # per-case covert verification
-    - https://www.hltv.org/news/43004/knife-trade-ups-and-return-of-retakes-headline-cs2-update
+  primary_source: https://stash.clash.gg   # per-case "The Coverts are X and Y"
+  cross_checked:
+    - https://wiki.cs.money/cases/
+    - https://cs2data.gg/cases/
+    - https://dmarket.com/blog/all-cs2-knife-cases/
+    - https://steamcommunity.com/sharedfiles/filedetails/?id=2952631801  # knife families
+  coverage: >
+    All 7 glove cases verified. All modern knife cases verified (29 cases total).
+    ONLY remaining gaps: the 6 cases in unverified_legacy_cases at the bottom.
+    No guesses appear anywhere in this file — an entry is either sourced or empty.
+  corrections_applied:
+    - "Clutch Case: USP-S | Cortex removed (it is Classified, not Covert)"
+  independent_corroboration:
+    # Claude re-verified Leon's update 2026-07-19 against fresh sources
+    # (stash.clash.gg per-case pages, csgodatabase, cs.money wiki). Result:
+    # every checked entry CONFIRMED. Nothing contradicted.
+    date: 2026-07-19
+    mechanic_claims_confirmed:
+      - "Covert trade-up takes 5 inputs (all other tiers take 10) — confirmed"
+      - "Mixing collections IS allowed; output collection weighted by input
+         composition (3A+2B → 60/40) — confirmed, corrects the earlier draft"
+      - "Clutch USP-S Cortex = Classified not Covert — confirmed"
+    coverts_confirmed:   # cases independently re-checked, all correct
+      [Glove Case, Operation Hydra Case, Clutch Case, Operation Broken Fang Case,
+       Snakebite Case, Recoil Case, Revolution Case, Operation Breakout Weapon Case,
+       Huntsman Weapon Case, Dreams & Nightmares Case, Fever Case, Kilowatt Case,
+       Fracture Case, Operation Riptide Case, Prisma Case, Prisma 2 Case]
+    not_independently_checked:
+      - "glove_pool contents and value_tier/concentration annotations (Leon's
+         qualitative judgments, not covert-identity facts)"
+      - "unverified_legacy_cases (empty by design)"
+      - "OPEN QUESTION on no-gold-collection input weighting (needs in-client test)"
 
 # =============================================================================
-# GLOVE CASES — gold tier = gloves (the 7 glove cases; high confidence)
+# GLOVE CASES — gold tier = gloves. ✅ ALL 7 VERIFIED
+# Gloves have NO StatTrak, so ST contracts can never output gloves.
 # =============================================================================
 glove_cases:
   - case: Glove Case
-    gold: glove
-    covert_verified: false
-    coverts: []            # TODO(Leon): verify (e.g. M4A4 Buzz Kill, SSG 08 Dragonfire?)
+    gold_type: glove
+    glove_pool: [Bloodhound, Driver, Hand Wraps, Moto, Specialist, Sport]
+    concentration: low
+    covert_verified: true
+    coverts:
+      - "SSG 08 | Dragonfire"
+      - "M4A4 | Buzz Kill"
+
   - case: Operation Hydra Case
-    gold: glove
-    covert_verified: false
-    coverts: []            # TODO(Leon)
+    gold_type: glove
+    glove_pool: [Bloodhound, Driver, Hand Wraps, Moto, Specialist, Sport]
+    concentration: low
+    covert_verified: true
+    note: >
+      Highest-value glove pool in the game (Sport Gloves Pandora's Box,
+      Specialist Crimson Kimono). Both Coverts are themselves expensive —
+      poor fuel economics, better as holds.
+    coverts:
+      - "AWP | Oni Taiji"
+      - "Five-SeveN | Hyper Beast"
+
   - case: Clutch Case
-    gold: glove
+    gold_type: glove
+    glove_pool: [Bloodhound, Driver, Hand Wraps, Moto, Specialist, Sport]
+    concentration: low
     covert_verified: true
     coverts:
       - "MP7 | Bloodsport"
-      - "USP-S | Cortex"
+      - "M4A4 | Neo-Noir"
+    # ⚠ CORRECTED 2026-07-19: earlier draft listed "USP-S | Cortex" as a Covert.
+    # Cortex is CLASSIFIED, not Covert. Do not use it as trade-up fuel.
+
   - case: Operation Broken Fang Case
-    gold: glove
-    covert_verified: false
-    coverts: []            # TODO(Leon) (e.g. M4A1-S Printstream, Glock Neo-Noir?)
+    gold_type: glove
+    glove_pool: [Broken Fang, Driver, Hand Wraps, Moto, Specialist, Sport]
+    concentration: low
+    covert_verified: true
+    coverts:
+      - "Glock-18 | Neo-Noir"
+      - "M4A1-S | Printstream"
+
   - case: Snakebite Case
-    gold: glove
-    covert_verified: false
-    coverts: []            # TODO(Leon) (e.g. USP-S The Traitor, XM1014 Frost Borre?)
+    gold_type: glove
+    glove_pool: [Broken Fang, Driver, Hand Wraps, Moto, Specialist, Sport]
+    concentration: low
+    covert_verified: true
+    note: Cheap, high-supply case — among the cheapest glove-pool fuel available.
+    coverts:
+      - "USP-S | The Traitor"
+      - "M4A4 | In Living Color"
+
   - case: Recoil Case
-    gold: glove
-    covert_verified: false
-    coverts: []            # TODO(Leon) (e.g. AK-47 Ice Coaled, Dual Berettas Flora Carnivora?)
+    gold_type: glove
+    glove_pool: [Broken Fang, Driver, Hand Wraps, Moto, Specialist, Sport]
+    concentration: low
+    covert_verified: true
+    coverts:
+      - "AWP | Chromatic Aberration"
+      - "USP-S | Printstream"
+
   - case: Revolution Case
-    gold: glove
-    covert_verified: false
-    coverts: []            # TODO(Leon) (e.g. AK-47 Head Shot, M4A4 Temukau?)
+    gold_type: glove
+    glove_pool: [Bloodhound, Driver, Hand Wraps, Moto, Specialist, Sport]
+    concentration: low
+    covert_verified: true
+    coverts:
+      - "AK-47 | Head Shot"
+      - "M4A4 | Temukau"
+
+# NOTE: "Dead Hand" is a weekly-drop TERMINAL tied to gloves, NOT a case.
+# Reportedly added 22 glove skins. Verify whether it participates in trade-ups.
 
 # =============================================================================
-# KNIFE CASES — gold tier = knives (from the tradeit knife-case enumeration)
-# covert_verified:true entries confirmed against clash.gg per-case pages.
+# KNIFE CASES — grouped by knife-model FAMILY (drives dilution → fuel value)
 # =============================================================================
-knife_cases:
-  # --- active drop pool (2026) — highest priority to verify ---
-  - case: Dreams & Nightmares Case
-    gold: knife
+knife_case_families:
+
+  # ---- SINGLE-MODEL POOLS: premium fuel (only if the model is valuable) ----
+  - family: Butterfly only
+    cases: [Operation Breakout Weapon Case]
+    knife_models: [Butterfly Knife]
+    n_finishes: 13
+    concentration: high
+    value_tier: premium
+    note: >
+      Canonical concentrated pool — every outcome is a Butterfly, no cheap-model
+      risk, so its Coverts carry the highest fuel premium. BUT both Coverts run
+      ~$150-300 each, so input cost is high. Concentration vs. cost tradeoff.
     covert_verified: true
     coverts:
-      - "AK-47 | Nightwish"
-      - "MP9 | Starlight Protector"
-  - case: Fever Case
-    gold: knife
+      Operation Breakout Weapon Case:
+        - "M4A1-S | Cyrex"
+        - "P90 | Asiimov"
+
+  - family: Huntsman only
+    cases: [Huntsman Weapon Case]
+    knife_models: [Huntsman Knife]
+    concentration: high
+    value_tier: mid
     covert_verified: true
     coverts:
-      - "AWP | Printstream"
-      - "FAMAS | Bad Trip"
-  - case: Kilowatt Case
-    gold: knife
+      Huntsman Weapon Case:
+        - "M4A4 | Desert-Strike"
+        - "AK-47 | Vulcan"
+
+  - family: Falchion only
+    cases: [Falchion Case]
+    knife_models: [Falchion Knife]
+    concentration: high
+    value_tier: low-mid
     covert_verified: true
     coverts:
-      - "AK-47 | Inheritance"
-      - "AWP | Chrome Cannon"
-  - case: Fracture Case
-    gold: knife
+      Falchion Case:
+        - "AWP | Hyper Beast"
+        - "AK-47 | Aquamarine Revenge"
+
+  - family: Shadow Daggers only
+    cases: [Shadow Case]
+    knife_models: [Shadow Daggers]
+    concentration: high
+    value_tier: low
+    note: >
+      ⚠ Concentrated but LOW-VALUE. Proof that concentration alone isn't enough —
+      the single model must be desirable. Poor craft target.
     covert_verified: true
     coverts:
-      - "Desert Eagle | Printstream"
-      - "AK-47 | Legion of Anubis"
-  - case: Gallery Case
-    gold: knife
-    covert_verified: false
-    coverts: []            # TODO(Leon) (Kukri knife case)
-  # --- rare drop pool / discontinued knife cases ---
-  - case: Operation Riptide Case
-    gold: knife
+      Shadow Case:
+        - "USP-S | Kill Confirmed"
+        - "M4A1-S | Golden Coil"
+
+  - family: Classic Knife only
+    cases: [CS20 Case]
+    knife_models: [Classic Knife]
+    concentration: high
+    value_tier: low-mid
     covert_verified: true
     coverts:
-      - "Desert Eagle | Ocean Drive"
-      - "AK-47 | Leet Museo"
-  - case: Prisma Case
-    gold: knife
+      CS20 Case:
+        - "FAMAS | Commemoration"
+        - "AWP | Wildfire"
+
+  - family: Bowie only
+    cases: [Operation Wildfire Case]
+    knife_models: [Bowie Knife]
+    concentration: high
+    value_tier: low-mid
     covert_verified: true
     coverts:
-      - "M4A4 | The Emperor"
-      - "Five-SeveN | Angry Mob"
-  - case: Prisma 2 Case
-    gold: knife
+      Operation Wildfire Case:
+        - "M4A4 | The Battlestar"
+        - "AK-47 | Fuel Injector"
+
+  - family: Kukri only
+    cases: [Kilowatt Case, Gallery Case]
+    knife_models: [Kukri Knife]
+    concentration: high
+    value_tier: mid
+    note: Kilowatt introduced the Kukri (Feb 2024); Gallery (Armory, Oct 2024) shares the pool.
     covert_verified: true
     coverts:
-      - "M4A1-S | Player Two"
-      - "Glock-18 | Bullet Queen"
-  # gold-type confirmed, coverts still to verify:
-  - {case: Chroma Case,               gold: knife, covert_verified: false, coverts: []}
-  - {case: Chroma 2 Case,             gold: knife, covert_verified: false, coverts: []}
-  - {case: Chroma 3 Case,             gold: knife, covert_verified: false, coverts: []}
-  - {case: Gamma Case,                gold: knife, covert_verified: false, coverts: []}
-  - {case: Gamma 2 Case,              gold: knife, covert_verified: false, coverts: []}
-  - {case: Spectrum Case,             gold: knife, covert_verified: false, coverts: []}
-  - {case: Spectrum 2 Case,           gold: knife, covert_verified: false, coverts: []}
-  - {case: Operation Breakout Weapon Case, gold: knife, covert_verified: false, coverts: []}
-  - {case: Falchion Case,             gold: knife, covert_verified: false, coverts: []}
-  - {case: Huntsman Weapon Case,      gold: knife, covert_verified: false, coverts: []}
-  - {case: Operation Wildfire Case,   gold: knife, covert_verified: false, coverts: []}
-  - {case: Shadow Case,               gold: knife, covert_verified: false, coverts: []}
-  - {case: Danger Zone Case,          gold: knife, covert_verified: false, coverts: []}
-  - {case: Horizon Case,              gold: knife, covert_verified: false, coverts: []}
-  - {case: Shattered Web Case,        gold: knife, covert_verified: false, coverts: []}
-  - {case: CS20 Case,                 gold: knife, covert_verified: false, coverts: []}
-  - {case: Revolver Case,             gold: knife, covert_verified: false, coverts: []}
-  - {case: Winter Offensive Weapon Case,   gold: knife, covert_verified: false, coverts: []}
-  - {case: Operation Bravo Case,      gold: knife, covert_verified: false, coverts: []}
-  - {case: Operation Phoenix Weapon Case,  gold: knife, covert_verified: false, coverts: []}
-  - {case: Operation Vanguard Weapon Case, gold: knife, covert_verified: false, coverts: []}
-  # ⚠ Earliest cases (CS:GO Weapon Case 1/2/3, eSports 2013/2013 Winter/2014
-  # Summer) predate the modern rarity structure — confirm they actually expose
-  # a Covert→gold trade-up before including. Listed for completeness only:
-  - {case: CS:GO Weapon Case,         gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
-  - {case: CS:GO Weapon Case 2,       gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
-  - {case: CS:GO Weapon Case 3,       gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
-  - {case: eSports 2013 Case,         gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
-  - {case: eSports 2013 Winter Case,  gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
-  - {case: eSports 2014 Summer Case,  gold: knife, covert_verified: false, coverts: [], caveat: pre-modern-rarity}
+      Kilowatt Case:
+        - "AK-47 | Inheritance"
+        - "AWP | Chrome Cannon"
+      Gallery Case:
+        - "Glock-18 | Gold Toof"
+        - "M4A1-S | Vaporwave"
+
+  # ---- CLASSIC 5-MODEL POOLS: wide, huge value spread → cheap fuel ----
+  - family: Chroma knives
+    cases: [Chroma Case, Chroma 2 Case, Chroma 3 Case]
+    knife_models: [Bayonet, Flip Knife, Gut Knife, Karambit, M9 Bayonet]
+    concentration: low
+    value_tier: spread            # Gut cheap → Karambit expensive
+    note: >
+      Archetype of a "diluted" collection — cheap fuel precisely BECAUSE the
+      outcome can land on a Gut Knife. Widely cited as the cheap-input family.
+    covert_verified: true
+    coverts:
+      Chroma Case:
+        - "Galil AR | Chatterbox"     # ⚠ our biggest backtest winner (+44.7%, 2026-03-18 ammo buff)
+        - "AWP | Man-o'-war"
+      Chroma 2 Case:
+        - "M4A1-S | Hyper Beast"
+        - "MAC-10 | Neon Rider"
+      Chroma 3 Case:
+        - "M4A1-S | Chantico's Fire"
+        - "PP-Bizon | Judgement of Anubis"
+
+  - family: Gamma knives
+    cases: [Gamma Case, Gamma 2 Case]
+    knife_models: [Bayonet, Flip Knife, Gut Knife, Karambit, M9 Bayonet]
+    concentration: low
+    value_tier: spread
+    note: Gamma Doppler Emerald Karambit is the jackpot outcome here.
+    covert_verified: true
+    coverts:
+      Gamma Case:
+        - "M4A1-S | Mecha Industries"
+        - "Glock-18 | Wasteland Rebel"
+      Gamma 2 Case:
+        - "FAMAS | Roll Cage"
+        - "AK-47 | Neon Revolution"
+
+  # ---- SPECTRUM-MODEL POOLS (5 models, mid-to-high value) ----
+  - family: Spectrum knives
+    cases: [Spectrum Case, Spectrum 2 Case]
+    knife_models: [Butterfly Knife, Bowie Knife, Falchion Knife, Huntsman Knife, Shadow Daggers]
+    n_finishes: 18
+    concentration: low
+    value_tier: mid-high
+    note: Contains Butterfly, so better EV than Chroma/Gamma despite similar width.
+    covert_verified: true
+    coverts:
+      Spectrum Case:
+        - "USP-S | Neo-Noir"
+        - "AK-47 | Bloodsport"
+      Spectrum 2 Case:
+        - "P250 | See Ya Later"
+        - "AK-47 | The Empress"
+
+  - family: Gamma-finish Spectrum models
+    cases: [Operation Riptide Case, Dreams & Nightmares Case]
+    knife_models: [Butterfly Knife, Bowie Knife, Falchion Knife, Huntsman Knife, Shadow Daggers]
+    n_finishes: ~50
+    concentration: low
+    value_tier: mid-high
+    note: >
+      Same 5 models as Spectrum, in GAMMA finishes (Gamma Doppler, Lore,
+      Autotronic). Cheapest mainstream route to a Butterfly — exactly why
+      MP9 Starlight Protector became prime fuel and ran +840% in Oct 2025.
+    covert_verified: true
+    coverts:
+      Dreams & Nightmares Case:      # ✅ VERIFIED BY LEON 2026-07-19
+        - "AK-47 | Nightwish"
+        - "MP9 | Starlight Protector"
+      Operation Riptide Case:
+        - "Desert Eagle | Ocean Drive"
+        - "AK-47 | Leet Museo"
+
+  # ---- HORIZON-MODEL POOLS (4 models) ----
+  - family: Horizon knives
+    cases: [Horizon Case, Danger Zone Case]
+    knife_models: [Navaja Knife, Stiletto Knife, Talon Knife, Ursus Knife]
+    concentration: medium
+    value_tier: spread            # Navaja cheap → Talon/Stiletto valuable
+    covert_verified: true
+    coverts:
+      Horizon Case:
+        - "Desert Eagle | Code Red"
+        - "AK-47 | Neon Rider"
+      Danger Zone Case:
+        - "AK-47 | Asiimov"
+        - "AWP | Neo-Noir"
+
+  - family: Prisma knives
+    cases: [Prisma Case, Prisma 2 Case]
+    knife_models: [Navaja Knife, Stiletto Knife, Talon Knife, Ursus Knife]
+    concentration: medium
+    value_tier: spread
+    covert_verified: true
+    coverts:
+      Prisma Case:
+        - "M4A4 | The Emperor"
+        - "Five-SeveN | Angry Mob"
+      Prisma 2 Case:
+        - "M4A1-S | Player Two"
+        - "Glock-18 | Bullet Queen"
+
+  # ---- SHATTERED WEB MODELS (4 models) ----
+  - family: Shattered Web knives
+    cases: [Shattered Web Case, Fracture Case]
+    knife_models: [Nomad Knife, Paracord Knife, Skeleton Knife, Survival Knife]
+    concentration: medium
+    value_tier: mid
+    covert_verified: true
+    coverts:
+      Shattered Web Case:
+        - "AWP | Containment Breach"
+        - "MAC-10 | Stalker"
+      Fracture Case:
+        - "Desert Eagle | Printstream"
+        - "AK-47 | Legion of Anubis"
+
+  - family: Shattered Web models, Chroma finishes
+    cases: [Fever Case]
+    knife_models: [Nomad Knife, Paracord Knife, Skeleton Knife, Survival Knife]
+    concentration: medium
+    value_tier: mid
+    note: Fever (Armory, Mar 2025) — Shattered Web knife models in Chroma finishes.
+    covert_verified: true
+    coverts:
+      Fever Case:
+        - "AWP | Printstream"
+        - "FAMAS | Bad Trip"
+
+  # ---- LEGACY / ORIGINAL-MODEL CASES ----
+  - family: Original knives (classic finishes)
+    cases:
+      - CS:GO Weapon Case
+      - CS:GO Weapon Case 2
+      - CS:GO Weapon Case 3
+      - eSports 2013 Case
+      - eSports 2013 Winter Case
+      - eSports 2014 Summer Case
+      - Operation Bravo Case
+      - Winter Offensive Weapon Case
+      - Operation Phoenix Weapon Case
+      - Operation Vanguard Weapon Case
+      - Revolver Case
+    knife_models: [Bayonet, Flip Knife, Gut Knife, Karambit, M9 Bayonet]
+    concentration: low
+    value_tier: spread
+    covert_verified: partial
+    note: >
+      Coverts below are verified. The 6 cases in unverified_legacy_cases are NOT
+      confirmed — several may not expose a Covert tier at all, which would make
+      them ineligible as trade-up inputs regardless of gold pool. Low priority:
+      mostly expensive/illiquid legacy cases with poor fuel economics.
+    coverts:
+      Operation Bravo Case:
+        - "Desert Eagle | Golden Koi"
+        - "AK-47 | Fire Serpent"
+      Winter Offensive Weapon Case:
+        - "M4A4 | Asiimov"
+        - "Sawed-Off | The Kraken"
+      Operation Phoenix Weapon Case:
+        - "AUG | Chameleon"           # in our backtest universe (scoped_rifles pair)
+        - "AWP | Asiimov"
+      Operation Vanguard Weapon Case:
+        - "AK-47 | Wasteland Rebel"
+        - "P2000 | Fire Elemental"
+      Revolver Case:
+        - "M4A4 | Royal Paladin"
+        - "R8 Revolver | Fade"
+
+# ⚠ THE ONLY REMAINING GAPS — not verified, no guesses recorded.
+# Look each up at https://stash.clash.gg (search the case, read "The Coverts are").
+unverified_legacy_cases:
+  - CS:GO Weapon Case
+  - CS:GO Weapon Case 2
+  - CS:GO Weapon Case 3
+  - eSports 2013 Case
+  - eSports 2013 Winter Case
+  - eSports 2014 Summer Case
 
 # =============================================================================
-# MAP COLLECTIONS — Covert skins but NO gold output (the exclusion set).
-# A gold trade-up change does NOT move these reds. NOT exhaustive — the point
-# is the principle: souvenir/map collections have no knife/glove tier.
+# MAP / SOUVENIR COLLECTIONS — Coverts but NO gold tier. Exclusion set.
+# A gold trade-up change does NOT move these reds.
 # =============================================================================
 map_collections_no_gold:
   - The Dust 2 Collection
@@ -175,3 +460,36 @@ map_collections_no_gold:
   - The Militia Collection
   - The Office Collection
   - The Baggage Collection
+note_on_map_collections: >
+  Some older map collections top out below Covert entirely — verify per
+  collection rather than assuming every entry has reds to exclude.
+  ARMORY collections also have no gold tier and belong in this exclusion set:
+  Train 2025, Sport & Field, Boreal, Ascent, Radiant, Graphic Design,
+  Overpass 2024, Spy Tech, Arabesque. (Spy Tech + Arabesque added 2026-07-09.)
+
+# =============================================================================
+# EV MODEL GUIDANCE (for the trade-up calculator)
+# =============================================================================
+ev_model:
+  contract_ev: >
+    EV = Σ over outcomes [ P(outcome) x price(outcome, projected wear) ]
+         − Σ input costs − fees.
+    P(collection) = fraction of the 5 inputs from that collection.
+    P(specific skin | collection) = distribution over that collection's gold
+    pool — VERIFY whether uniform across models/finishes before assuming.
+  key_levers:
+    - concentration x value_tier: single-model AND valuable = best craft target
+    - cheap fuel: lowest-cost Coverts pointing into a high-value pool
+    - float: low-float inputs push output toward FN/MW (2-10x value swing)
+    - mixing: direct weight at a high-value pool using cheap fuel elsewhere
+    - StatTrak: separate market; ST inputs → ST knives only
+  screening_order:
+    - 1. compute cost-per-20%-weight for every Covert (its "fuel price")
+    - 2. compute expected output value per collection pool
+    - 3. rank collections by (expected output value / fuel price)
+    - 4. check liquidity + spread on BOTH the inputs and the likely outputs
+  do_not_assume:
+    - that all Coverts respond to gold trade-up news (map collections do not)
+    - that same-collection is required (it is not)
+    - uniform outcome probability without verifying pool composition
+    - that concentration implies value (see Shadow Daggers)
