@@ -28,40 +28,53 @@ HILITE, MUTED = "#0d9488", "#94a3b8"
 POS, NEG = "#15803d", "#b91c1c"
 
 
+def _style(chart):
+    """Shared clean styling: no chart junk, recessive axes, consistent type."""
+    return (chart
+            .configure_view(strokeWidth=0)
+            .configure_axis(grid=False, labelColor="#64748b", titleColor="#64748b",
+                            labelFontSize=12, titleFontSize=11, domainColor="#e2e8f0",
+                            tickColor="#e2e8f0")
+            .configure_axisY(domain=False, ticks=False))
+
+
 def _magnitude_bar(df, cat, val, title, highlight=None):
-    """Horizontal magnitude bars with direct value labels (dataviz: one axis,
-    label every bar, highlight the headline category)."""
+    """Horizontal magnitude bars, direct value labels, headline bar highlighted."""
     df = df.copy()
     df["_c"] = [HILITE if (highlight and c == highlight) else MUTED for c in df[cat]]
     df["_lbl"] = df[val].map(lambda v: f"{v:+.0%}")
+    pad = max(abs(df[val].max()), abs(df[val].min())) * 0.18 + 0.02
     base = alt.Chart(df).encode(
         y=alt.Y(f"{cat}:N", sort=None, title=None),
-        x=alt.X(f"{val}:Q", title=title, axis=alt.Axis(format="+%")),
+        x=alt.X(f"{val}:Q", title=title, axis=alt.Axis(format="+%"),
+                scale=alt.Scale(domain=[min(0, df[val].min()) - pad,
+                                        df[val].max() + pad])),
     )
-    bars = base.mark_bar(height=22, cornerRadiusEnd=4).encode(
+    bars = base.mark_bar(height=20, cornerRadiusEnd=3).encode(
         color=alt.Color("_c:N", scale=None, legend=None),
         tooltip=[cat, alt.Tooltip(f"{val}:Q", format="+.1%")],
     )
-    labels = base.mark_text(align="left", dx=4, color="#475569").encode(text="_lbl:N")
-    return (bars + labels).properties(height=len(df) * 34 + 10)
+    labels = base.mark_text(align="left", dx=5, fontSize=12, fontWeight=600,
+                            color="#334155").encode(text="_lbl:N")
+    return _style((bars + labels).properties(height=len(df) * 40 + 8))
 
 
 def _signed_bar(df, cat, val):
-    """Diverging signed-return bars (green up / red down, neutral zero),
-    value-labeled so identity is never color-alone."""
+    """Diverging signed-return bars (green up / red down), zero baseline."""
     df = df.copy()
     df["_c"] = [POS if v >= 0 else NEG for v in df[val]]
-    df["_lbl"] = df[val].map(lambda v: f"{v:+.0%}")
     base = alt.Chart(df).encode(
         x=alt.X(f"{cat}:N", sort="-y", title=None,
-                axis=alt.Axis(labelAngle=-40, labelLimit=180)),
+                axis=alt.Axis(labelAngle=-40, labelLimit=160)),
         y=alt.Y(f"{val}:Q", title="net return", axis=alt.Axis(format="+%")),
     )
-    bars = base.mark_bar(width=16, cornerRadiusEnd=3).encode(
+    bars = base.mark_bar(width=14, cornerRadiusEnd=2, opacity=0.9).encode(
         color=alt.Color("_c:N", scale=None, legend=None),
         tooltip=[cat, alt.Tooltip(f"{val}:Q", format="+.1%")],
     )
-    return bars.properties(height=300)
+    zero = alt.Chart(df).mark_rule(color="#cbd5e1", strokeWidth=1).encode(
+        y=alt.datum(0))
+    return _style((zero + bars).properties(height=300))
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
@@ -136,15 +149,9 @@ all_directional_disabled = "weapon_balance_change" in gating.get("disabled_rules
 mode = "LOG-ONLY" if all_directional_disabled else ("PAPER" if paper else "LIVE")
 banner_color = {"LOG-ONLY": "🟡", "PAPER": "🟠", "LIVE": "🔴"}[mode]
 st.markdown(
-    f"### {banner_color} MODE: **{mode}** · total spend to date: **$0** · "
-    f"rules DO-NOT-TRADE: **{disabled_count}** "
-    f"({', '.join(gating.get('disabled_rules', []) + gating.get('disabled_pairs', []))})"
-)
-st.caption(
-    "Read-only research dashboard — it cannot place orders or change config. "
-    f"BUFF fee {config.require('costs.buff_fee_pct'):.1%} · "
-    f"T+{config.require('cooldown.trade_lock_days')} lock · "
-    f"venue {config.require('meta.primary_venue')}"
+    f"{banner_color} **{mode}** · $0 spent · {disabled_count} rules gated off · "
+    f"read-only · BUFF fee {config.require('costs.buff_fee_pct'):.1%} · "
+    f"T+{config.require('cooldown.trade_lock_days')} lock"
 )
 
 page = st.sidebar.radio(
@@ -215,54 +222,31 @@ def trade_up_controls():
 
 # ------------------------------------------------------------------ #
 if page == "0 · Overview":
-    st.header("System A — what we found, in one screen")
-    st.markdown(
-        "System A tries to trade CS2 skins on BUFF around game updates. After "
-        "escalating tests (all paper, **$0 spent**), the picture is clear:"
-    )
+    st.header("Overview")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Reactive balance-patch trading", "DEAD", "edge < spread",
+    c1.metric("Balance-patch trading", "not viable", "edge < spread",
               delta_color="inverse")
-    c2.metric("Trade-up / item-access events", "ALIVE ★", "+164% median, durable")
-    c3.metric("Real capital deployed", "$0", "log-only")
-    st.markdown(
-        "**The story in three lines:**\n"
-        "1. Balance patches move items only ~1–5% — smaller than the ~3–7% "
-        "round-trip cost (spread + fee). Confirmed dead on real BUFF data "
-        "(events ≈ random-date placebo). *See Spread analysis & Rule scorecard.*\n"
-        "2. **Trade-up mechanic changes** (like 2025-10-22 covert→knife) reprice "
-        "the whole gold-case ladder **+164% over ~60 days** — spread is "
-        "irrelevant, no speed race, no leak needed (durable). This is the one "
-        "class where System A works. *See Trade-up class ★.*\n"
-        "3. The engine is now repointed at that class and a live announcement "
-        "monitor (Scrapling) feeds it — all still paper."
-    )
-    st.subheader("The one chart that matters")
+    c2.metric("Trade-up events", "viable", "+164% median · durable")
+    c3.metric("Capital deployed", "$0", "paper / log-only")
     tu = trade_up_controls()
     if tu and tu["event_med"] is not None:
         chart_df = pd.DataFrame({
-            "group": ["Trade-up event\n(fuel reds)", "Same reds,\nrandom dates",
-                      "Broad market"],
-            "median 60d net": [tu["event_med"], tu["placebo_med"] or 0, -0.07],
+            "group": ["Trade-up event", "Random dates", "Broad market"],
+            "net": [tu["event_med"], tu["placebo_med"] or 0, -0.07],
         })
         st.altair_chart(
-            _magnitude_bar(chart_df, "group", "median 60d net",
-                           "median 60-day net return (BUFF, after frictions)",
-                           highlight="Trade-up event\n(fuel reds)"),
+            _magnitude_bar(chart_df, "group", "net", "median 60-day net return",
+                           highlight="Trade-up event"),
             use_container_width=True,
         )
-        st.caption("The trade-up event towers over both controls — a real, "
-                   "event-specific, spread-proof effect. Everything else we "
-                   "tested sat in the noise.")
+        st.caption("Median 60-day net return on BUFF (after spread + fee), "
+                   "2025-10-22 trade-up event vs. two controls.")
     else:
-        st.info("Load iflow BUFF data (`python -m shared.iflow_history`) to see "
-                "the headline trade-up chart.")
-    st.divider()
-    st.caption("Use the sidebar to drill in. Data health first if numbers look "
-               "off — a stale poller is the failure mode we most guard against.")
+        st.caption("Load iflow BUFF data (`python -m shared.iflow_history`) for "
+                   "the trade-up chart.")
 
 elif page == "1 · Data health":
-    st.header("Is the poller actually working?")
+    st.header("Data health")
     poller_ps = subprocess.run(
         ["pgrep", "-f", "system_a.runner --poll"], capture_output=True, text=True
     )
@@ -300,7 +284,7 @@ elif page == "1 · Data health":
         st.dataframe(per_item.to_frame(), use_container_width=True)
 
 elif page == "2 · Live market":
-    st.header("What does the book look like right now?")
+    st.header("Live market")
     if frame.empty:
         st.warning("no poller data yet")
     else:
@@ -331,7 +315,7 @@ elif page == "2 · Live market":
         c2.line_chart(history[["listing_count", "buy_order_count"]])
 
 elif page == "3 · Spread analysis":
-    st.header("What does trading actually cost us?")
+    st.header("Spreads")
     store = open_store(config)
     stats = spread_stats(store)
     if not stats:
@@ -360,19 +344,27 @@ elif page == "3 · Spread analysis":
             column_config={c: st.column_config.NumberColumn(format="percent")
                            for c in pct_cols},
         )
-        st.subheader("Spread vs liquidity — the relationship that killed reactive trading")
+        st.subheader("Spread vs. liquidity")
         scatter = pd.DataFrame(
-            [{"listings": s.median_listings, "spread": s.median, "item": s.item}
-             for s in stats]
+            [{"listings": s.median_listings, "spread": s.median,
+              "item": s.item.split(" (")[0]} for s in stats]
         )
-        st.scatter_chart(scatter, x="listings", y="spread")
+        chart = alt.Chart(scatter).mark_circle(
+            size=90, color=HILITE, opacity=0.7, stroke="white", strokeWidth=1
+        ).encode(
+            x=alt.X("listings:Q", title="listing count (liquidity)",
+                    scale=alt.Scale(type="log")),
+            y=alt.Y("spread:Q", title="spread", axis=alt.Axis(format="%")),
+            tooltip=["item", alt.Tooltip("spread:Q", format=".1%"), "listings:Q"],
+        ).properties(height=340)
+        st.altair_chart(_style(chart), use_container_width=True)
+        st.caption("More liquid items (right) trade tighter — the relationship "
+                   "that makes reactive edges too small to clear costs.")
 
 elif page == "4 · Rule scorecard":
-    st.header("Which rules work?")
+    st.header("Rule scorecard")
     rules, outcomes, scores, notes = study_results()
-    st.caption("OUT-OF-SAMPLE (+ flagged semi-in-sample). In-sample 2022-11-18 "
-               "is quarantined to the correctness gate and never shown in "
-               "these numbers.")
+    st.caption("Out-of-sample only; in-sample 2022-11-18 excluded.")
     disabled = set(gating.get("disabled_rules", []))
     disabled_pairs = set(gating.get("disabled_pairs", []))
 
@@ -405,7 +397,7 @@ elif page == "4 · Rule scorecard":
             "full study reports.")
 
 elif page == "5 · Event timeline":
-    st.header("What happened, and what did we predict?")
+    st.header("Event timeline")
     rules, outcomes, scores, notes = study_results()
     rows = []
     for o in outcomes:
@@ -428,35 +420,26 @@ elif page == "5 · Event timeline":
     )
     if not traded.empty:
         traded["label"] = traded["event"] + " · " + traded["item"].str.split(" |").str[0]
-        st.subheader("Out-of-sample net returns per trade (green up / red down)")
+        st.subheader("Out-of-sample net return per trade")
         st.altair_chart(_signed_bar(traded, "label", "net (steam fee)"),
                         use_container_width=True)
-        st.caption("Balance-patch trades cluster near zero once real costs bite — "
-                   "the visual read behind 'reactive is dead'.")
+        st.caption("Balance-patch trades net-of-cost, out-of-sample.")
     st.dataframe(
         pd.DataFrame(rows), use_container_width=True, height=420,
         column_config={c: st.column_config.NumberColumn(format="percent")
                        for c in ["gross", "net (steam fee)"]},
     )
-    st.subheader("Live forward tests")
-    for note in notes:
-        if "LIVE FORWARD" in note:
-            st.warning(note)
-        else:
-            st.caption(note)
     live = [e for e in rules.historical_events
             if "ACTIVE" in str(e.get("status", ""))]
-    for event in live:
-        ts = datetime.strptime(str(event["date"]), "%Y-%m-%d").replace(
-            tzinfo=timezone.utc
-        ).timestamp()
-        st.markdown(f"**{event['date']}** — tracking since event "
-                    f"({(time.time() - ts) / 86400:.0f} days). Poller data "
-                    "accumulating; predicted: rotated-out collections "
-                    "appreciate gradually; Cache ambiguous (rule disabled).")
+    if live:
+        st.subheader("Live forward tests")
+        for event in live:
+            ts = datetime.strptime(str(event["date"]), "%Y-%m-%d").replace(
+                tzinfo=timezone.utc).timestamp()
+            st.caption(f"{event['date']} · tracking {(time.time()-ts)/86400:.0f} days")
 
 elif page == "6 · Prediction log":
-    st.header("Why did it decide that?")
+    st.header("Decision log")
     provenance_path = REPO_ROOT / "var" / "provenance_a.jsonl"
     if not provenance_path.exists():
         st.warning("no provenance log yet (var/provenance_a.jsonl) — run a "
@@ -487,58 +470,39 @@ elif page == "6 · Prediction log":
             st.json(view.iloc[int(idx)].to_dict())
 
 elif page == "7 · Trade-up class ★":
-    st.header("The one System A play that survived every control")
-    st.markdown(
-        "**Verdict:** reactive *balance-patch* trading is dead (edge < spread). "
-        "But **trade-up / item-access mechanic changes** are huge (+164% median), "
-        "durable over ~60 days, spread-irrelevant, and need no speed race — the "
-        "one class where System A's whole stack works. The engine is now "
-        "repointed at it (paper, $0)."
-    )
+    st.header("Trade-up class")
+    from system_a.collections import load_collection_map
+    cmap = load_collection_map(REPO_ROOT / "config" / "trade_up_collections.yaml")
     tu = trade_up_controls()
     if tu is None:
-        st.warning("No iflow BUFF data loaded — run `python -m shared.iflow_history` "
-                   "to populate source='buff_iflow', then this fills in.")
+        st.caption("No iflow BUFF data — run `python -m shared.iflow_history`.")
     else:
-        st.subheader("Negative controls (2025-10-22, 60d hold, BUFF frictions)")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Fuel reds on EVENT",
+        c1.metric("Event (fuel reds)",
                   f"{tu['event_med']:+.0%}" if tu['event_med'] is not None else "—",
-                  help=f"median net, n={tu['event_n']} gold-case coverts")
-        c2.metric("Same reds, RANDOM dates",
+                  help=f"median 60d net, n={tu['event_n']}")
+        c2.metric("Random dates",
                   f"{tu['placebo_med']:+.0%}" if tu['placebo_med'] is not None else "—",
                   help=f"time placebo, n={tu['placebo_n']}")
-        c3.metric("Broad market baseline", "−7%", help="all iflow items, same window")
+        c3.metric("Broad market", "−7%", help="all iflow items, same window")
         chart_df = pd.DataFrame({
-            "group": ["Trade-up event", "Random dates (placebo)", "Broad market"],
-            "median 60d net": [tu['event_med'], tu['placebo_med'] or 0, -0.07],
+            "group": ["Trade-up event", "Random dates", "Broad market"],
+            "net": [tu['event_med'], tu['placebo_med'] or 0, -0.07],
         })
         st.altair_chart(
-            _magnitude_bar(chart_df, "group", "median 60d net",
+            _magnitude_bar(chart_df, "group", "net",
                            "median 60-day net return (after BUFF frictions)",
                            highlight="Trade-up event"),
             use_container_width=True,
         )
-        if tu['event_med'] and tu['placebo_med'] is not None:
-            st.success(
-                f"Event {tu['event_med']:+.0%} vs placebo {tu['placebo_med']:+.0%} "
-                "vs market −7% → the effect is real and event-specific. "
-                "(Cross-section: non-fuel classifieds pumped as hard as fuel "
-                "coverts → it's whole-gold-case LADDER repricing, not fuel "
-                "selection. `python -m system_a.trade_up_control` for full detail.)"
-            )
-    st.subheader("Collection map (config/trade_up_collections.yaml)")
-    from system_a.collections import load_collection_map
-    cmap = load_collection_map(REPO_ROOT / "config" / "trade_up_collections.yaml")
-    c1, c2 = st.columns(2)
-    c1.metric("verified gold-case coverts mapped", len(cmap.covert_to_case))
-    c2.metric("map corroborated", "yes ✓" if cmap.verified else "no")
+        st.caption("2025-10-22 trade-up event, 60-day hold. Event vs. two "
+                   "controls (`python -m system_a.trade_up_control` for detail).")
+    st.divider()
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Gold-case coverts mapped", len(cmap.covert_to_case))
+    c2.metric("Map corroborated", "yes" if cmap.verified else "no")
     paper = REPO_ROOT / "var" / "trade_up_paper.jsonl"
     if paper.exists():
-        buys = [json.loads(l) for l in paper.read_text().splitlines()
-                if l.strip() and json.loads(l)["action"] == "buy_placed"]
-        st.subheader("Last end-to-end paper run (trade_up_paper.py)")
-        st.caption(f"engine opened {len(buys)} gold-case-covert positions on the "
-                   "announcement and held long — proves the repointed stack works")
-    st.info("Next: predictive overlay — the anti-monopoly concentration tracker "
-            "(which item classes Valve is most likely to open access to next).")
+        buys = sum(1 for l in paper.read_text().splitlines()
+                   if l.strip() and json.loads(l)["action"] == "buy_placed")
+        c3.metric("Last paper run — positions", buys, help="trade_up_paper.py")
