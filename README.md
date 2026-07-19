@@ -116,6 +116,8 @@ If port 8501 is taken: `.venv/bin/streamlit run dashboard_a/app.py --server.port
 ### What each page answers
 
 The dashboard cannot trade or change config — read-only by construction.
+Start on **Overview** — a plain-language, one-screen summary of what we found
+(reactive dead, trade-up alive) with the headline chart. Then:
 
 1. **Data health** — is the poller alive? Gaps in the series are loud (a
    silently broken poller is the failure mode we care most about).
