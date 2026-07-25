@@ -112,36 +112,23 @@ regime:
   weak_volume_ratio_max: 0.50     # aggregate volume vs baseline ⇒ weak/low-liquidity
 
 # --- Data sources (keys in .env; names here) — phased strategy, Shared §2a ----
-# Vendor due diligence 2026-07-17 (Builder 2, docs/System-B_Research-Notes.md §3):
-#  - cs2.sh: BUFF bid/ask + book counts (ask/bid_volume) at ~5min, float ranges,
-#    archive since 2023 w/ total_supply; NO BUFF executed-trade field (volume is
-#    proxied from archive aggregate.hourly_volume) — USD only.
-#  - csmarketapi DISQUALIFIED for BUFF163 (its enum has buff.market, not buff.cn).
-#  - pricempire: the BUFF163 daily price backbone (buff163 + buff163_buy),
-#    Enterprise tier, PRICE ONLY — volume/listings history must be self-collected.
+# Live  = Steam Market via Scrapling (free, no key, source=steam_live).
+# BUFF historical = iflow archive (source=buff_iflow, 2022→2026-05).
+# Backtest history = Steam pricehistory (STEAM_LOGIN_SECURE cookie).
+# cs2.sh was DROPPED 2026-07-25 (demo key expired/401; paid tier not worth it
+# once Steam-via-Scrapling covered live liveness). csmarketapi disqualified for
+# BUFF163; pricempire is a Phase-2 paid option if BUFF live data is ever needed.
 data:
   phase: 1                             # 1 = free validation; 2 = paid history/archive
-  live_feed: cs2.sh                    # CS2SH_API_KEY in .env
-  live_feed_tier: developer            # ONLY /v1/prices/latest: bid/ask + depth.
-                                       # NO executed volume / float / total_supply
-                                       # (those are Scale tier — Phase 2 decision)
+  live_feed: steam                     # free Steam-via-Scrapling (no key)
   history_feed: steam_pricehistory     # Phase 1: FREE Steam daily median + qty sold
-                                       # (STEAM_LOGIN_SECURE cookie in .env).
-                                       # Phase 2 candidates: cs2.sh Scale archive,
-                                       # pricempire (csmarketapi disqualified — no
-                                       # buff163), SteamAnalyst.
   refresh_seconds: 300
   pause_trading_on_stale_or_divergent: true
-  collect_snapshots: true              # self-collect depth/volume forward — no vendor
-                                       # sells BUFF volume history (Builder 2 concurs)
+  collect_snapshots: true              # self-collect forward — no vendor sells this history
   snapshot_poller:                     # persist a live price snapshot every cycle
     enabled: true
     db_path: var/market.db
-    feed: steam                        # "steam" = FREE Steam-via-Scrapling (no key,
-                                       # source=steam_live); "cs2sh" = BUFF (needs a
-                                       # real CS2SH_API_KEY; the demo key is dead/401).
-    live_source: steam_live            # which stored source the dashboard treats as
-                                       # "live" (steam_live | buff). Keep in sync w/ feed.
+    live_source: steam_live            # stored source the dashboard treats as "live"
   steam_history:                       # Phase-1 backtest ingestion (src/shared/steam_history.py)
     items_file: config/steam_backtest_items.txt
     cache_dir: var/steam_history

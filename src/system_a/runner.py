@@ -20,9 +20,9 @@ import time
 from pathlib import Path
 
 from shared.bus import SignalBus
-from shared.configuration import Config, secret
+from shared.configuration import Config
 from shared.execution import PaperBackend
-from shared.feed import Cs2shFeed, FeedUnavailable, ReplayFeed, item_to_json
+from shared.feed import FeedUnavailable, ReplayFeed, item_to_json
 from shared.ledger import DAY, Ledger
 from shared.provenance import ProvenanceLog
 from shared.store import SnapshotStore
@@ -154,16 +154,15 @@ def run_poller(config: Config, max_cycles: int | None = None,
         print("data.snapshot_poller.enabled is false")
         return 1
     tracked = load_universe(config)
-    # Feed choice: cs2.sh BUFF (needs a real key) or the free Steam-via-Scrapling
-    # feed (no key; keeps the dashboard live when no BUFF key is available).
-    feed_name = feed_name or poller.get("feed", "cs2sh")
-    if feed_name == "steam":
-        from shared.feed import SteamLiveFeed
-        feed = SteamLiveFeed(tracked)
-        source_tag = "steam_live"
-    else:
-        feed = Cs2shFeed(tracked, config.require("fx.usd_cny_rate"))
-        source_tag = "buff"
+    # Live feed: Steam Market via Scrapling — free, no key. (cs2.sh dropped;
+    # feed_name is accepted for back-compat but only "steam" is supported.)
+    if feed_name and feed_name != "steam":
+        print(f"unknown feed '{feed_name}' — only 'steam' is supported "
+              "(cs2.sh was dropped)")
+        return 1
+    from shared.feed import SteamLiveFeed
+    feed = SteamLiveFeed(tracked)
+    source_tag = "steam_live"
     store = SnapshotStore(REPO_ROOT / poller["db_path"])
     interval = config.require("data.refresh_seconds")
     now = time.time()
@@ -245,15 +244,11 @@ def _fmt_ts(ts: float) -> str:
 
 
 def run_live(config: Config) -> int:
-    missing = [k for k in ("CS2SH_API_KEY",) if secret(k) is None]
-    if missing:
-        print(f"live mode blocked — placeholder keys: {', '.join(missing)}")
-        return 1
     if config.require("execution.paper_mode"):
         print(
             "execution.paper_mode is true (the go-live gate, §9). Live loop "
-            "would run the paper backend against the real feed — not yet wired. "
-            "TODO(Leon): schedule this once keys land."
+            "would run the paper backend against the live feed — not yet wired. "
+            "TODO(Leon): schedule this once a real execution path exists."
         )
         return 1
     print("real-money execution backend is intentionally not implemented yet")
@@ -291,9 +286,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--posts", type=Path, default=None)
     parser.add_argument("--cycles", type=int, default=None,
                         help="--poll only: stop after N polls (default: run forever)")
-    parser.add_argument("--feed", choices=["cs2sh", "steam"], default=None,
-                        help="--poll only: cs2sh (BUFF, needs key) or steam "
-                             "(free live via Scrapling). Default: config.")
+    parser.add_argument("--feed", choices=["steam"], default=None,
+                        help="--poll only: live feed (only 'steam' — free via "
+                             "Scrapling; cs2.sh was dropped).")
     args = parser.parse_args(argv)
 
     config = Config.load(REPO_ROOT, system="system_a")

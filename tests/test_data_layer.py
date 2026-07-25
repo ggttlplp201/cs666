@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from shared.configuration import Config, secret
-from shared.feed import Cs2shFeed, FeedUnavailable, ReplayFeed, item_to_json, normalize_cs2sh
+from shared.feed import FeedUnavailable, ReplayFeed, item_to_json
 from shared.store import SnapshotStore
 from shared.synthetic import DAY, ItemSpec, generate_series
 
@@ -22,51 +22,10 @@ def test_config_loads_shared_and_overlay():
 
 
 def test_placeholder_secret_is_none(monkeypatch):
-    monkeypatch.setenv("CS2SH_API_KEY", "PLACEHOLDER")
-    assert secret("CS2SH_API_KEY") is None
-    monkeypatch.setenv("CS2SH_API_KEY", "real-key-123")
-    assert secret("CS2SH_API_KEY") == "real-key-123"
-
-
-def test_live_feed_unavailable_on_placeholder(monkeypatch):
-    monkeypatch.setenv("CS2SH_API_KEY", "PLACEHOLDER")
-    with pytest.raises(FeedUnavailable):
-        Cs2shFeed(["AK-47 | Test (Field-Tested)"], usd_cny_rate=7.25).fetch()
-
-
-def test_normalize_cs2sh_verified_shape_and_fx():
-    # Verified response shape: items[name][source]; USD prices → CNY at fx rate.
-    entry = {
-        "buff": {"ask": 140.0, "ask_volume": 55, "bid": 135.2, "bid_volume": 4},
-        "steam": {"ask": 190.0},
-        "youpin": {"ask": 142.5},
-        "collected_at": "2026-07-18T04:00:00Z",
-        "updated_at": "2026-07-18T03:59:00Z",
-    }
-    item = normalize_cs2sh("M4A4 | Test (Factory New)", entry, usd_cny_rate=7.25)
-    assert item.buff_lowest_sell_cny == pytest.approx(140.0 * 7.25)
-    assert item.buff_highest_buy_cny == pytest.approx(135.2 * 7.25)
-    assert item.buff_listing_count == 55      # listing count, NOT supply
-    assert item.buff_buy_order_count == 4
-    assert item.buff_volume_24h is None       # Developer tier: no executed volume
-    # freshness comes from collected_at, not updated_at
-    from datetime import datetime, timezone
-    assert item.ts == datetime(2026, 7, 18, 4, tzinfo=timezone.utc).timestamp()
-    assert item.cross_market == {"steam": 190.0, "youpin": 142.5}  # USD, as-is
-
-
-def test_parse_latest_skips_buffless_and_reads_errors():
-    payload = {
-        "items": {
-            "A": {"buff": {"ask": 10.0, "ask_volume": 1, "bid": 9.0, "bid_volume": 1},
-                  "collected_at": 100.0},
-            "B": {"steam": {"ask": 5.0}, "collected_at": 100.0},  # no BUFF quote
-        },
-        "errors": [{"item": "Not A Real Skin", "error": "unknown item"}],
-    }
-    items = Cs2shFeed.parse_latest(payload, usd_cny_rate=7.0)
-    assert [i.market_hash_name for i in items] == ["A"]
-    assert items[0].buff_lowest_sell_cny == pytest.approx(70.0)
+    monkeypatch.setenv("SOME_API_KEY", "PLACEHOLDER")
+    assert secret("SOME_API_KEY") is None
+    monkeypatch.setenv("SOME_API_KEY", "real-key-123")
+    assert secret("SOME_API_KEY") == "real-key-123"
 
 
 def test_replay_feed_round_trip(tmp_path):

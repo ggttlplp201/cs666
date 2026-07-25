@@ -58,6 +58,16 @@ Before any item-level decision, classify the broad market. Regime sets the posit
 > Added after live testing of the cs2.sh API (2026-07). This section is the
 > authority on what data we actually have; System-A §2 / System-B §2 defer to
 > it where they disagree. The full normalization schema stays in System-A §2.3.
+>
+> **⚠ STATUS UPDATE 2026-07-25 — cs2.sh DROPPED.** The demo key expired (401)
+> and a paid tier was never worth it once the free Steam-via-Scrapling live
+> feed covered the liveness need. **Current sources:** *live* = Steam Market
+> `priceoverview` via Scrapling (`SteamLiveFeed`, source=`steam_live`, USD, no
+> bid/ask); *historical BUFF* = iflow archive (source=`buff_iflow`, 2022→
+> 2026-05); *backtest history* = Steam `pricehistory`. The cs2.sh specifics in
+> §2a.1–2a.3 below are retained as a record of what was tested, not as the live
+> setup. The volume/bid-nullability handling those gaps drove is still needed
+> (Steam-live has volume but no bid; iflow has bid but no volume).
 
 ### 2a.1 cs2.sh — verified facts (Developer tier, $75/mo)
 
