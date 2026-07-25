@@ -145,6 +145,83 @@ class Cs2shFeed:
         return items
 
 
+class SteamLiveFeed:
+    """FREE live price feed via Steam Market priceoverview, fetched through
+    Scrapling (its fingerprint spoofing clears Steam's 429 that plain requests
+    hit). No key, no cookie. Returns lowest_price (ask), median_price, and 24h
+    volume — real executed volume, the field cs2.sh's Developer tier lacks.
+
+    ⚠ This is STEAM, not BUFF: prices run ~30-40% above BUFF and there is no
+    bid/ask spread (priceoverview gives no buy order). Store rows as
+    source="steam_live" so they never mix with BUFF. Used to keep the live
+    dashboard fed for free when no BUFF key is available; not a BUFF substitute
+    for trading economics. Prices stay USD (the *_cny field names are
+    venue-legacy; the source tag disambiguates).
+
+    Polls one item at a time with a polite gap; a failed item is skipped, not
+    fatal (partial snapshot beats none). Requires scrapling[fetchers].
+    """
+
+    URL = "https://steamcommunity.com/market/priceoverview/"
+
+    def __init__(self, tracked_items: list[str], request_gap_seconds: float = 4.0):
+        self.tracked_items = tracked_items
+        self.request_gap_seconds = request_gap_seconds
+        self.last_errors: list[dict] = []
+
+    def fetch(self) -> list[Item]:
+        try:
+            from scrapling.fetchers import Fetcher
+        except Exception as e:
+            raise FeedUnavailable(
+                "scrapling not installed — `pip install scrapling[fetchers]` "
+                "for the free Steam live feed"
+            ) from e
+        ts = time.time()
+        items, self.last_errors = [], []
+        for i, name in enumerate(self.tracked_items):
+            if i:
+                time.sleep(self.request_gap_seconds)
+            try:
+                item = self._fetch_one(Fetcher, name, ts)
+                if item is not None:
+                    items.append(item)
+                else:
+                    self.last_errors.append({"item": name, "error": "no price"})
+            except Exception as e:  # one bad item never kills the snapshot
+                self.last_errors.append({"item": name, "error": str(e)[:80]})
+        if not items:
+            raise FeedUnavailable("steam live: every item failed (rate-limited?)")
+        return items
+
+    def _fetch_one(self, Fetcher, name: str, ts: float) -> Item | None:
+        query = urllib.parse.urlencode(
+            {"appid": 730, "currency": 1, "market_hash_name": name}
+        )
+        resp = Fetcher.get(f"{self.URL}?{query}", timeout=25)
+        raw = getattr(resp, "body", None) or resp.text
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", "replace")
+        data = json.loads(raw)
+        if not data.get("success") or not data.get("lowest_price"):
+            return None
+        ask = _parse_usd(data["lowest_price"])
+        volume = int(str(data.get("volume", "0")).replace(",", "") or 0)
+        return Item(
+            market_hash_name=name,
+            buff_lowest_sell_cny=ask,          # USD — Steam ask (see docstring)
+            buff_highest_buy_cny=0.0,          # Steam priceoverview has no bid
+            buff_listing_count=0,              # not exposed by this endpoint
+            buff_buy_order_count=0,
+            buff_volume_24h=volume,            # real executed volume (Steam)
+            ts=ts,
+        )
+
+
+def _parse_usd(s: str) -> float:
+    return float(str(s).replace("$", "").replace(",", "").strip())
+
+
 class ReplayFeed:
     """Replays snapshots from a JSONL file: one Item dict per line, ordered by ts.
 

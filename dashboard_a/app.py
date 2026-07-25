@@ -100,14 +100,19 @@ def open_store(config: Config) -> SnapshotStore:
     )
 
 
+def live_source() -> str:
+    return load_config().get(
+        "data.snapshot_poller", {}).get("live_source", "buff")
+
+
 @st.cache_data(ttl=60)
 def buff_frame() -> pd.DataFrame:
     config = load_config()
     store = open_store(config)
     return pd.read_sql_query(
         "SELECT market_hash_name, ts, lowest_sell, highest_buy, listing_count,"
-        " buy_order_count FROM snapshots WHERE source='buff' ORDER BY ts",
-        store.conn,
+        " buy_order_count FROM snapshots WHERE source=? ORDER BY ts",
+        store.conn, params=(live_source(),),
     )
 
 
@@ -284,8 +289,10 @@ elif page == "1 · Data health":
         st.error(f"⚠ LAST SNAPSHOT IS {age_min:.0f} MINUTES OLD "
                  f"(cadence {refresh//60} min) — the series has a live gap.")
 
+    st.caption(f"live source: **{live_source()}** "
+               f"({'Steam, free' if live_source() == 'steam_live' else 'BUFF'})")
     store = open_store(config)
-    gaps = store.gap_report("buff", expected_seconds=refresh)
+    gaps = store.gap_report(live_source(), expected_seconds=refresh)
     if gaps:
         st.error(f"⚠ {len(gaps)} GAP(S) IN THE STORED SERIES — a holed series "
                  "must not be trusted:")
@@ -301,40 +308,55 @@ elif page == "1 · Data health":
         st.dataframe(per_item.to_frame(), use_container_width=True)
 
 elif page == "2 · Live market":
-    st.header("Live market")
+    src = live_source()
+    is_steam = src == "steam_live"
+    st.header("Live market" + (" · Steam (USD)" if is_steam else " · BUFF (CNY)"))
+    if is_steam:
+        st.caption("Live source: Steam Market (free, no key). Steam prices run "
+                   "~30–40% above BUFF and have no bid/ask spread — use for "
+                   "liveness, not BUFF trade economics.")
     if frame.empty:
-        st.warning("no poller data yet")
+        st.warning(f"no live data yet for source='{src}'")
     else:
         latest = frame.sort_values("ts").groupby("market_hash_name").last()
-        latest["spread_pct"] = (
-            (latest.lowest_sell - latest.highest_buy) / latest.lowest_sell
-        )
         latest["age_min"] = (time.time() - latest.ts) / 60
         refresh = config.require("data.refresh_seconds")
         latest["stale"] = latest.age_min * 60 > 2.5 * refresh
-        show = latest[["lowest_sell", "highest_buy", "spread_pct",
-                       "listing_count", "buy_order_count", "age_min", "stale"]]
-        show.columns = ["ask ¥", "bid ¥", "spread", "listings", "bids",
-                        "age (min)", "STALE"]
-        st.dataframe(
-            show.sort_values("spread"),
-            use_container_width=True,
-            column_config={"spread": st.column_config.NumberColumn(format="percent")},
-        )
+        if is_steam:
+            show = latest[["lowest_sell", "buy_order_count", "age_min", "stale"]]
+            show.columns = ["price $", "volume 24h", "age (min)", "STALE"]
+            st.dataframe(show.sort_values("price $", ascending=False),
+                         use_container_width=True)
+        else:
+            latest["spread_pct"] = (
+                (latest.lowest_sell - latest.highest_buy) / latest.lowest_sell)
+            show = latest[["lowest_sell", "highest_buy", "spread_pct",
+                           "listing_count", "buy_order_count", "age_min", "stale"]]
+            show.columns = ["ask ¥", "bid ¥", "spread", "listings", "bids",
+                            "age (min)", "STALE"]
+            st.dataframe(
+                show.sort_values("spread"), use_container_width=True,
+                column_config={"spread": st.column_config.NumberColumn(format="percent")})
         if latest.stale.any():
             st.error(f"⚠ {int(latest.stale.sum())} item(s) stale")
         item = st.selectbox("history", sorted(frame.market_hash_name.unique()))
-        history = frame[frame.market_hash_name == item].set_index(
-            pd.to_datetime(frame[frame.market_hash_name == item].ts, unit="s")
-        )
-        c1, c2 = st.columns(2)
-        c1.line_chart(history[["lowest_sell", "highest_buy"]])
-        c2.line_chart(history[["listing_count", "buy_order_count"]])
+        h = frame[frame.market_hash_name == item].set_index(
+            pd.to_datetime(frame[frame.market_hash_name == item].ts, unit="s"))
+        if is_steam:
+            st.line_chart(h[["lowest_sell"]].rename(columns={"lowest_sell": "price $"}))
+        else:
+            c1, c2 = st.columns(2)
+            c1.line_chart(h[["lowest_sell", "highest_buy"]])
+            c2.line_chart(h[["listing_count", "buy_order_count"]])
 
 elif page == "3 · Spread analysis":
-    st.header("Spreads")
+    st.header("Spreads · BUFF")
     store = open_store(config)
-    stats = spread_stats(store)
+    # BUFF spreads come from iflow history (the live buff feed needs a real key;
+    # the free Steam live feed has no bid/ask). Fall back to live buff if present.
+    stats = spread_stats(store, source="buff_iflow") or spread_stats(store)
+    st.caption("BUFF bid/ask spreads from iflow history (Steam live feed has no "
+               "spread). This is the cost that made reactive trading unviable.")
     if not stats:
         st.warning("no poller data yet")
     else:

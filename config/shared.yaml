@@ -134,9 +134,14 @@ data:
   pause_trading_on_stale_or_divergent: true
   collect_snapshots: true              # self-collect depth/volume forward — no vendor
                                        # sells BUFF volume history (Builder 2 concurs)
-  snapshot_poller:                     # poll /v1/prices/latest and persist forever —
-    enabled: true                      # accumulates our own BUFF depth history from
-    db_path: var/market.db             # day one; data not captured is lost permanently
+  snapshot_poller:                     # persist a live price snapshot every cycle
+    enabled: true
+    db_path: var/market.db
+    feed: steam                        # "steam" = FREE Steam-via-Scrapling (no key,
+                                       # source=steam_live); "cs2sh" = BUFF (needs a
+                                       # real CS2SH_API_KEY; the demo key is dead/401).
+    live_source: steam_live            # which stored source the dashboard treats as
+                                       # "live" (steam_live | buff). Keep in sync w/ feed.
   steam_history:                       # Phase-1 backtest ingestion (src/shared/steam_history.py)
     items_file: config/steam_backtest_items.txt
     cache_dir: var/steam_history

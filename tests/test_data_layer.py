@@ -107,3 +107,63 @@ def test_store_series_latest_staleness():
     assert not store.is_stale(hist[-1].ts + 60, max_age_seconds=3600)
     assert store.is_stale(hist[-1].ts + 2 * DAY, max_age_seconds=3600)
     assert SnapshotStore().is_stale(0.0, 1.0)  # empty store is stale
+
+
+class TestSteamLiveFeed:
+    def test_parses_priceoverview(self, monkeypatch):
+        from shared import feed as feedmod
+        from shared.feed import SteamLiveFeed
+        # fake scrapling Fetcher returning a priceoverview payload
+        class FakeResp:
+            def __init__(self, body): self.body = body
+            text = ""
+        payloads = {
+            "AK-47 | Redline (Field-Tested)":
+                '{"success":true,"lowest_price":"$42.21","volume":"55","median_price":"$55.12"}',
+            "BadItem": '{"success":false}',
+        }
+        class FakeFetcher:
+            @staticmethod
+            def get(url, timeout=25):
+                import urllib.parse as up
+                name = up.parse_qs(up.urlparse(url).query)["market_hash_name"][0]
+                return FakeResp(payloads[name].encode())
+        import sys, types
+        fake_mod = types.ModuleType("scrapling.fetchers")
+        fake_mod.Fetcher = FakeFetcher
+        monkeypatch.setitem(sys.modules, "scrapling.fetchers", fake_mod)
+
+        f = SteamLiveFeed(["AK-47 | Redline (Field-Tested)", "BadItem"],
+                          request_gap_seconds=0)
+        items = f.fetch()
+        assert len(items) == 1                      # BadItem skipped, not fatal
+        assert items[0].buff_lowest_sell_cny == 42.21
+        assert items[0].buff_volume_24h == 55
+        assert items[0].buff_highest_buy_cny == 0.0  # Steam has no bid
+        assert len(f.last_errors) == 1
+
+    def test_degrades_without_scrapling(self, monkeypatch):
+        import builtins
+        from shared.feed import SteamLiveFeed, FeedUnavailable
+        real = builtins.__import__
+        def fake(name, *a, **k):
+            if name.startswith("scrapling"):
+                raise ImportError("no scrapling")
+            return real(name, *a, **k)
+        monkeypatch.setattr(builtins, "__import__", fake)
+        with pytest.raises(FeedUnavailable):
+            SteamLiveFeed(["X"]).fetch()
+
+    def test_all_items_fail_is_fatal(self, monkeypatch):
+        import sys, types
+        from shared.feed import SteamLiveFeed, FeedUnavailable
+        class FakeResp:
+            body = b'{"success":false}'
+            text = ""
+        class FakeFetcher:
+            @staticmethod
+            def get(url, timeout=25): return FakeResp()
+        m = types.ModuleType("scrapling.fetchers"); m.Fetcher = FakeFetcher
+        monkeypatch.setitem(sys.modules, "scrapling.fetchers", m)
+        with pytest.raises(FeedUnavailable):
+            SteamLiveFeed(["A", "B"], request_gap_seconds=0).fetch()

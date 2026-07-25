@@ -139,7 +139,8 @@ def run_demo(config: Config) -> int:
     return run_replay(config, snapshots_path, posts_path)
 
 
-def run_poller(config: Config, max_cycles: int | None = None) -> int:
+def run_poller(config: Config, max_cycles: int | None = None,
+               feed_name: str | None = None) -> int:
     """Snapshot poller (Shared §2a.3): poll /v1/prices/latest on the refresh
     cadence and persist every response forever — our own BUFF depth history
     accumulates from day one; data not captured is lost permanently.
@@ -153,16 +154,26 @@ def run_poller(config: Config, max_cycles: int | None = None) -> int:
         print("data.snapshot_poller.enabled is false")
         return 1
     tracked = load_universe(config)
-    feed = Cs2shFeed(tracked, config.require("fx.usd_cny_rate"))
+    # Feed choice: cs2.sh BUFF (needs a real key) or the free Steam-via-Scrapling
+    # feed (no key; keeps the dashboard live when no BUFF key is available).
+    feed_name = feed_name or poller.get("feed", "cs2sh")
+    if feed_name == "steam":
+        from shared.feed import SteamLiveFeed
+        feed = SteamLiveFeed(tracked)
+        source_tag = "steam_live"
+    else:
+        feed = Cs2shFeed(tracked, config.require("fx.usd_cny_rate"))
+        source_tag = "buff"
     store = SnapshotStore(REPO_ROOT / poller["db_path"])
     interval = config.require("data.refresh_seconds")
     now = time.time()
     print(
         f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] POLLER START (restart if a "
-        f"START line precedes this without a clean stop) — {len(tracked)} "
-        f"items every {interval}s → {poller['db_path']}"
+        f"START line precedes this without a clean stop) — feed={feed_name} "
+        f"source={source_tag}, {len(tracked)} items every {interval}s → "
+        f"{poller['db_path']}"
     )
-    last = store.last_ts(source="buff")
+    last = store.last_ts(source=source_tag)
     if last is not None and now - last > 2.5 * interval:
         print(
             f"⚠ GAP AT STARTUP: {(now - last) / 3600:.1f}h since last stored "
@@ -179,15 +190,17 @@ def run_poller(config: Config, max_cycles: int | None = None) -> int:
             return 1
         except Exception as e:  # transient network/API errors: log, back off, retry
             consecutive_failures += 1
-            wait = min(interval * consecutive_failures, 3600)
+            # Cap backoff so a fixed key / lifted rate-limit resumes fast,
+            # instead of ballooning to hour-long idle waits.
+            wait = min(interval * consecutive_failures, 4 * interval)
             print(
                 f"⚠ [{time.strftime('%Y-%m-%d %H:%M:%S')}] poll failed "
                 f"({consecutive_failures}x): {e} — retrying in {wait:.0f}s"
             )
             time.sleep(wait)
             continue
-        previous_ts = store.last_ts(source="buff")
-        store.insert(items, source="buff")
+        previous_ts = store.last_ts(source=source_tag)
+        store.insert(items, source=source_tag)
         cycles += 1
         gap_note = ""
         if items and previous_ts is not None and \
@@ -204,17 +217,20 @@ def run_poller(config: Config, max_cycles: int | None = None) -> int:
 
 
 def run_gap_check(config: Config) -> int:
-    """Data-sanity report: holes in the stored buff series (Shared §12 —
-    pause on stale/divergent data; a holed series must not be trusted)."""
+    """Data-sanity report: holes in the live series (Shared §12 — pause on
+    stale/divergent data; a holed series must not be trusted). Checks whatever
+    source the poller is actually writing (live_source)."""
     poller = config.require("data.snapshot_poller")
+    source = poller.get("live_source", "buff")
     store = SnapshotStore(REPO_ROOT / poller["db_path"])
     interval = config.require("data.refresh_seconds")
-    gaps = store.gap_report("buff", expected_seconds=interval)
-    last = store.last_ts(source="buff")
+    gaps = store.gap_report(source, expected_seconds=interval)
+    last = store.last_ts(source=source)
     if last is None:
-        print("no buff snapshots stored yet")
+        print(f"no '{source}' snapshots stored yet")
         return 1
-    print(f"last snapshot: {_fmt_ts(last)} ({(time.time() - last) / 60:.0f}min ago)")
+    print(f"[{source}] last snapshot: {_fmt_ts(last)} "
+          f"({(time.time() - last) / 60:.0f}min ago)")
     if not gaps:
         print("no gaps > 2.5× cadence — series is continuous")
         return 0
@@ -275,6 +291,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--posts", type=Path, default=None)
     parser.add_argument("--cycles", type=int, default=None,
                         help="--poll only: stop after N polls (default: run forever)")
+    parser.add_argument("--feed", choices=["cs2sh", "steam"], default=None,
+                        help="--poll only: cs2sh (BUFF, needs key) or steam "
+                             "(free live via Scrapling). Default: config.")
     args = parser.parse_args(argv)
 
     config = Config.load(REPO_ROOT, system="system_a")
@@ -283,7 +302,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.replay:
         return run_replay(config, args.replay, args.posts)
     if args.poll:
-        return run_poller(config, args.cycles)
+        return run_poller(config, args.cycles, feed_name=args.feed)
     if args.gap_check:
         return run_gap_check(config)
     return run_live(config)
