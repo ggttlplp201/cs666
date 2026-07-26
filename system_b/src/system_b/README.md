@@ -98,6 +98,61 @@ Two findings worth acting on:
   traded. Improving the ranker will change nothing until the entry path actually
   consumes its ranking. **This is the highest-value thing to fix.**
 
+### Why the ranker never reaches an order
+
+Measured on the real panel, the entry funnel collapses in two independent
+places — both must be cleared before the ranker's edge can express itself:
+
+| Funnel stage | Mean items/day |
+|---|---|
+| scoreable | 13.2 |
+| pass hard filters | 11.4 |
+| above composite floor | 6.1 |
+| **≥2 accumulation signals** | **0.78** — zero on 83/129 days |
+| candidates | 0.44 — **never exceeds 2** |
+
+1. **The ≥2-signal gate starves the funnel.** Candidates never reach
+   `max_new_positions_per_cycle` (3), so sorting them is a mathematical no-op.
+   That alone explains identical trades across models.
+2. **Position sizing rounds to zero.** `item_allocation ÷ 4 batches × 0.25 vol
+   scale`, floored to an integer quantity, means **11 of 19 items are
+   un-buyable at 100k CNY** — anything above ~600 CNY for a primary, ~300 for a
+   small item. The only two items ever traded (Desolate Space @91, Redline
+   @241) are both in the affordable set. `risk.py` rejects rather than rounds up
+   when the scaled quantity hits zero.
+
+`entry.model_signal_substitution` (off by default) addresses (1): a top-decile
+forecast substitutes for one of the two required signals, so an item still needs
+≥1 real market-data signal plus the composite floor. Enabling it does widen the
+funnel — 4 admissions on the real panel, and 7 → 26 candidates on synthetic —
+but it did **not** change closed trades, because (2) then bites: at 100k the
+admissions are vetoed by `vol_scaled_0.25`, and at 2M capital they are approved
+but the left-side limit (`ask × 0.995`) never fills, and unfilled orders expire
+same-day rather than resting (`shared_b/execution.py`).
+
+On the **synthetic** market — the one place fills reliably happen — enabling it
+made results clearly *worse*:
+
+| | sub OFF | sub ON |
+|---|---|---|
+| trades | 8 | 9 |
+| win rate | 0.50 | **0.22** |
+| avg trade (net) | −2.08% | **−6.91%** |
+| Sharpe | −0.78 | **−1.38** |
+
+That is consistent rather than contradictory: on synthetic data the ranker has
+essentially no edge (IC ~0.01), so trading a real accumulation signal away for a
+worthless forecast should hurt — and it does. The mechanism only makes sense
+where the forecast is actually informative, and there (real data) the orders
+never filled.
+
+**Net: the ranker still has not been shown to improve P&L, and the substitution
+stays off by default.** Its edge on real data is real and measured; the path
+from that edge to a filled order is blocked by sizing granularity and a
+single-shot left-side limit, not by the ranking. The next thing to test is
+sizing — capital, `batches_per_item`, or rounding up instead of rejecting when
+the vol-scaled quantity hits zero — not the model.
+
 Two known limitations, documented rather than fixed:
 
 - Carried book rows are indistinguishable from observed ones in the panel, so

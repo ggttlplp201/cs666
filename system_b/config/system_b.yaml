@@ -43,6 +43,18 @@ entry:
   max_new_positions_per_cycle: 3
   entry_limit_discount_pct: 0.005  # left-side: rest the buy slightly below current ask
 
+  # Let a top-quantile walk-forward forecast stand in for ONE of the required
+  # accumulation signals. OFF by default — it widens the entry gate, so turn
+  # it on deliberately and re-check the go-live gate.
+  # Why it exists: on the real BUFF panel the >=2-signals rule empties the
+  # funnel on 64% of days and candidates never exceed max_new_positions, so
+  # the ranker's measured edge (rank IC 0.137, p=0.0003) never reaches an
+  # order — trades are identical across xgboost/RF/ridge.
+  model_signal_substitution:
+    enabled: false
+    substitute_min_signals: 1   # still needs >=1 REAL market-data signal
+    model_top_quantile: 0.10    # forecast must be top-decile that day
+
 # --- Regime classifier thresholds (Shared §2 quantification) ------------------
 regime_params:
   ma_window: 20

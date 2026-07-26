@@ -37,11 +37,21 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out", type=str, default=None)
     ap.add_argument("--model", type=str, default=None, help="override model.type")
+    ap.add_argument("--model-substitution", dest="model_sub", action="store_true",
+                    help="let a top-decile forecast substitute for one accumulation signal")
+    ap.add_argument("--capital", type=float, default=None,
+                    help="override capital.total (CNY) — sizing rounds to zero on "
+                         "expensive items when capital is small")
     args = ap.parse_args(argv)
 
     cfg = load_config("b")
     if args.model:
         cfg.setdefault("model", {})["type"] = args.model
+    if args.capital:
+        cfg.setdefault("capital", {})["total"] = args.capital
+    if args.model_sub:
+        cfg.setdefault("entry", {}).setdefault(
+            "model_signal_substitution", {})["enabled"] = True
 
     if args.synthetic or not args.data_dir:
         market = generate(n_items=args.items, n_days=args.days, seed=args.seed)

@@ -294,10 +294,53 @@ class PositionalStrategy:
         # The >=2-signals gate is HARD: Tier-3 attention AUGMENTS ranking
         # (System B §7 — a stronger entry), it never substitutes for a
         # market-data signal.
-        cand = passing[passing["structural_composite"] >= comp_floor]
-        cand = cand[cand["accum_count"] >= min_sig]
-        self._funnel["above_floor"] = int((passing["structural_composite"] >= comp_floor).sum())
+        above_floor = passing[passing["structural_composite"] >= comp_floor]
+        cand = above_floor[above_floor["accum_count"] >= min_sig]
+        self._funnel["above_floor"] = int(len(above_floor))
         self._funnel["accum_ge2"] = int((passing["accum_count"] >= min_sig).sum())
+
+        # --- model-assisted entry (off by default) --------------------------
+        # Measured on the real BUFF panel: the >=2-signals gate empties the
+        # funnel on 64% of days and the surviving candidate count NEVER
+        # exceeds max_new_positions_per_cycle. The walk-forward ranker
+        # therefore only ever re-orders a list too short to re-order, and its
+        # cross-sectional edge (rank IC 0.137, p=0.0003) cannot reach any
+        # order. Closed trades come out identical whichever model is fitted.
+        #
+        # When enabled, a top-quantile model forecast substitutes for exactly
+        # ONE of the required accumulation signals. An item must still clear
+        # the hard filters, the structural composite floor, and show at least
+        # `substitute_min_signals` real market-data signal — the forecast
+        # buys one signal, never the whole gate, so "WHEN" still needs
+        # market evidence.
+        sub = entry_cfg.get("model_signal_substitution", {}) or {}
+        self._funnel["model_admitted"] = 0
+        if sub.get("enabled", False) and pred is not None and min_sig > 0:
+            floor_sig = int(sub.get("substitute_min_signals", min_sig - 1))
+            top_q = float(sub.get("model_top_quantile", 0.10))
+            near = above_floor[
+                (above_floor["accum_count"] >= floor_sig)
+                & (above_floor["accum_count"] < min_sig)
+            ]
+            if not near.empty:
+                # rank within the day's full scoreable cross-section, so the
+                # bar is "top decile forecast today", not "best of a short list"
+                day_pred = pred.reindex(passing.index).dropna()
+                if len(day_pred) >= 3:
+                    cutoff = day_pred.quantile(1 - top_q)
+                    admitted = near.index[
+                        near.index.map(lambda i: float(day_pred.get(i, -1e9)) >= cutoff)
+                    ]
+                    if len(admitted):
+                        cand = pd.concat([cand, near.loc[admitted]])
+                        cand = cand[~cand.index.duplicated(keep="first")]
+                        self._funnel["model_admitted"] = int(len(admitted))
+                        for it in admitted:
+                            journal.decision(
+                                day=day, item=str(it), action="model_admitted",
+                                rule=f"forecast_top_{top_q:g}_substitutes_one_signal",
+                                regime=regime.regime.value,
+                                score=float(day_pred.get(it, float("nan"))))
         self._funnel["candidates"] = len(cand)
         if cand.empty:
             return []
