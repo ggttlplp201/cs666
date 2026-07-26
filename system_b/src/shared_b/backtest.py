@@ -130,6 +130,10 @@ def run_backtest(
     warmup_days: int = 60,
     journal: Journal | None = None,
     thesis_lookup: Callable[[Order], tuple[str, str]] | None = None,
+    order_ttl_days: int = 1,
+    passive_fill_fraction: float = 0.10,
+    require_observed_book: bool = True,
+    adverse_selection_pct: float = 0.0,
 ) -> BacktestResult:
     journal = journal or Journal(None)
     broker = PaperBroker(
@@ -137,6 +141,10 @@ def run_backtest(
         fee_pct=fee_pct,
         slippage_pct=slippage_pct,
         fill_fraction=fill_fraction,
+        order_ttl_days=order_ttl_days,
+        passive_fill_fraction=passive_fill_fraction,
+        require_observed_book=require_observed_book,
+        adverse_selection_pct=adverse_selection_pct,
     )
     ledger = Ledger(starting_cash=starting_cash, trade_lock_days=trade_lock_days,
                     settlement_days=settlement_days)
@@ -156,7 +164,13 @@ def run_backtest(
         # 0) mature sale receivables (BUFF T+7 settlement) into spendable cash
         ledger.settle_cash(d)
         # 1) settle yesterday's orders at today's prices
+        before = {o.client_order_id for o in broker.pending}
         fills = broker.settle(d)
+        # release the cash held by any buy order that filled or expired; what
+        # is still resting keeps its claim
+        still_resting = {o.client_order_id for o in broker.pending}
+        for oid in before - still_resting:
+            ledger.release_order_cash(oid)
         for f in fills:
             thesis, invalidation = ("", "")
             if thesis_lookup is not None:
@@ -172,6 +186,11 @@ def run_backtest(
                 continue
             if o.side.value == "buy":
                 broker.place_buy(o)
+                # a resting buy is a live claim on cash — reserve it so the
+                # same balance cannot back several simultaneous orders
+                if order_ttl_days > 1:
+                    ledger.commit_order_cash(
+                        o.client_order_id, o.qty * o.limit_price * (1 + slippage_pct))
             else:
                 broker.place_sell(o)
 

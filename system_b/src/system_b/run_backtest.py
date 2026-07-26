@@ -50,6 +50,10 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--entry-discount", type=float, default=None,
                     help="override entry.entry_limit_discount_pct; 0 = take the ask "
                          "instead of resting below it (abandons left-side entry)")
+    ap.add_argument("--order-ttl", type=int, default=None,
+                    help="days a limit order rests before expiring (1 = no resting)")
+    ap.add_argument("--adverse-selection", type=float, default=None,
+                    help="price drift charged against passive fills, e.g. 0.01")
     args = ap.parse_args(argv)
 
     cfg = load_config("b")
@@ -63,6 +67,10 @@ def main(argv: list[str] | None = None) -> dict:
         cfg.setdefault("volatility_targeting", {})["min_units_after_scaling"] = args.min_units
     if args.entry_discount is not None:
         cfg.setdefault("entry", {})["entry_limit_discount_pct"] = args.entry_discount
+    if args.order_ttl is not None:
+        cfg.setdefault("execution", {})["order_ttl_days"] = args.order_ttl
+    if args.adverse_selection is not None:
+        cfg.setdefault("execution", {})["adverse_selection_pct"] = args.adverse_selection
     if args.model_sub:
         cfg.setdefault("entry", {}).setdefault(
             "model_signal_substitution", {})["enabled"] = True
@@ -91,6 +99,10 @@ def main(argv: list[str] | None = None) -> dict:
         fee_pct=float(cfg.at("costs.buff_fee_pct", 0.015)),
         slippage_pct=float(cfg.at("execution.slippage_pct", 0.005)),
         fill_fraction=float(cfg.at("execution.fill_fraction", 0.25)),
+        order_ttl_days=int(cfg.at("execution.order_ttl_days", 1)),
+        passive_fill_fraction=float(cfg.at("execution.passive_fill_fraction", 0.10)),
+        require_observed_book=bool(cfg.at("execution.require_observed_book", True)),
+        adverse_selection_pct=float(cfg.at("execution.adverse_selection_pct", 0.0)),
         trade_lock_days=int(cfg.at("cooldown.trade_lock_days", 7)),
         settlement_days=int(cfg.at("cooldown.settlement_days", 7)),
         journal=journal,

@@ -227,6 +227,10 @@ def build_panel(
                 # -1 is the schema's documented "unknown" sentinel, which makes
                 # the filter fall back to buy_order_count.
                 "valid_buy_orders": -1,
+                # 1 = the book was actually observed this day, 0 = carried
+                # forward. A carried book is a stale quote, not executable
+                # liquidity: passive fills must not be granted against it.
+                "is_observed": b.index.isin(observed).astype(int),
             },
             index=b.index,
         ).dropna(subset=["volume"])

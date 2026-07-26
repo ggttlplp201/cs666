@@ -80,6 +80,24 @@ selection_filters:
                                        # depth alone with bid-count sizing
 
 # --- Volatility-targeted sizing (Shared §11, paper-derived, secondary) --------
+# --- Passive / resting orders -------------------------------------------------
+# order_ttl_days: 1 = the original semantics (one settlement attempt, then the
+# order is dropped and the strategy re-decides). >1 lets a left-side limit WAIT
+# for its dip instead of crossing the spread — the measured spread on the real
+# BUFF panel (median 3.37%, mean 4.44%) plus the 1.5% sell fee exceeds the
+# strategy's edge, so not crossing it is the whole ballgame.
+#
+# A resting fill assumes we held queue position at that price, which flatters
+# results, so passive fills are handicapped: a smaller slice of the day's
+# volume, never against a carried-forward quote, and an optional adverse-
+# selection charge (passive buys fill mostly when the price is falling).
+execution:
+  slippage_pct: 0.005
+  order_ttl_days: 1            # >1 enables resting orders
+  passive_fill_fraction: 0.10  # vs fill_fraction 0.25 for a marketable order
+  require_observed_book: true  # never fill against a carried quote
+  adverse_selection_pct: 0.0   # e.g. 0.01 = assume 1% drift against a passive buy
+
 volatility_targeting:
   enabled: true
   method: garch_1_1

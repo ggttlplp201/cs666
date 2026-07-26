@@ -386,8 +386,12 @@ class PositionalStrategy:
         reserved = CycleReservations()  # same-cycle approvals claim cash/caps
         for item, feat in cand.iterrows():
             item = str(item)
+            # An order stays in flight for its whole TTL when orders rest, so
+            # the in-flight window must track the TTL — otherwise a resting
+            # order gets a duplicate stacked on top of it every single cycle.
+            in_flight = max(1, int(cfg.get("execution", {}).get("order_ttl_days", 1)))
             last_od = self.last_order_day.get(item)
-            if last_od is not None and (day - last_od).days <= 1:
+            if last_od is not None and (day - last_od).days <= in_flight:
                 continue  # working order still in flight; wait for its settle
             meta = view.meta.get(item)
             category = meta.category if meta else "other"

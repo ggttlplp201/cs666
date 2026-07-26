@@ -78,8 +78,22 @@ All figures below are post-fix (timezone alignment + invalid-book filtering).
 | Run | Window | Trades | Avg trade (net) | Total return | Mean rank IC |
 |---|---|---|---|---|---|
 | Synthetic, 720d | — | 8 | −0.85% | −0.19% | 0.010 |
-| Real, filled book | 2025-11-21 → 2026-05-20 | 3 | −1.81% | −0.03% | **0.137** (t=3.73, p=0.0003) |
-| Real, observations only | same | 2 | −11.2% | −0.30% | **0.409** (t=3.86, p=0.002, n=15) |
+| Real, filled book | 2025-11-21 → 2026-05-20 | 3 | −1.81% | −0.03% | **0.137** (see below) |
+| Real, observations only | same | 2 | −11.2% | −0.30% | **0.409** (n=15) |
+
+**Correction on the IC significance.** A 21-day forward target makes consecutive
+daily ICs overlap — 102 daily observations are nowhere near 102 independent
+bets (IC lag-1 autocorrelation is 0.589). The naive t-test overstates the case:
+
+| Method | t | p |
+|---|---|---|
+| naive one-sample t | 3.73 | 0.0003 |
+| **Newey–West, 21 lags** | **2.53** | **0.011** |
+| non-overlapping (n=5) | 3.44 | 0.026 |
+
+The edge is still real and significant at the 5% level, but ~30× weaker in
+p-value than a naive test claims. Given ~40% carried book rows and cross-venue
+volume, treat the effective IC as roughly 0.07–0.10, not 0.137.
 
 The go-live gate correctly **HOLDs** in every run.
 
@@ -183,16 +197,56 @@ This is the same wall System A hit — measured spreads killed reactive entry
 there too (`system_a/` spread study). It is a property of BUFF's book on this
 universe, not of either strategy's logic.
 
-What would have to change for System B to be viable, in order of leverage:
+### Resting orders (implemented) — fixes the cost, exposes the next problem
 
-1. **Don't cross the spread.** The left-side design is right; it just needs
-   orders that *rest* across days rather than expiring same-day. That is a real
-   change to `shared_b/execution.py`, and it trades fill rate for cost.
-2. **Trade a tighter-spread universe.** Median 3.37% is the binding number;
-   higher-liquidity items would move it.
-3. **A longer horizon**, so one round-trip cost is amortised over a bigger move.
+`execution.order_ttl_days > 1` lets a left-side limit *wait* for its dip instead
+of expiring after one settlement attempt. A resting fill assumes we held queue
+position, which a daily-bar backtest cannot verify, so passive fills are
+handicapped (constraints from an external review, 2026-07-27):
 
-Improving the model is not on that list.
+- `passive_fill_fraction` 0.10 vs 0.25 for a marketable order — we sit behind an
+  unknown queue
+- `require_observed_book` — never fill against a carried-forward quote
+- `adverse_selection_pct` — passive buys fill disproportionately when price is
+  falling; charge for it
+- resting buys **reserve cash** in the ledger, so one balance cannot back
+  several simultaneous orders
+
+| Variant (real panel) | Trades | Win% | Avg trade | Median trade | Total |
+|---|---|---|---|---|---|
+| baseline, no resting | 3 | 67% | −1.81% | +2.50% | −0.030% |
+| rest 7d + 1% adverse sel. | 9 | 78% | +1.06% | +3.52% | −0.110% |
+| **+ 500k / 2 batches / min-units** | **12** | **75%** | **+1.21%** | **+3.52%** | −0.067% |
+
+Not crossing the spread works: trades 3 → 12 and the average trade goes from
+−1.81% to **+1.21%**. That is the first positive per-trade number System B has
+produced, and it directly confirms the spread diagnosis.
+
+**But total return is still negative**, and the reason is the exit policy, not
+entry:
+
+```
+winners  n=9   mean position   167 CNY   total  +79
+losers   n=3   mean position 2,915 CNY   total -416
+```
+
+Nearly every winner is a `take_profit_trim` — a small slice skimmed off a
+position. Every loser is a `distribution_shape_exit` — a full liquidation. The
+strategy books many small gains and a few large losses, so a 75% win rate still
+loses money. `distribution_shape_exit` has been the single largest P&L drain in
+every run since the first synthetic one.
+
+Remaining leverage, in order:
+
+1. **The exit policy.** Small trims vs whole-position stops is the shape that
+   turns a 75% win rate negative. This is now the binding constraint.
+2. **Cost-aware selection** — rank on `expected_return − expected round-trip
+   cost` rather than ranking on alpha and paying the cost afterwards.
+3. **A tighter-spread universe.** Median 3.37% is the number to beat.
+4. **A longer horizon**, so one round trip is amortised over a bigger move —
+   only if IC persists at 45–90 days, which is untested.
+
+Improving the model is still not on that list.
 
 Two known limitations, documented rather than fixed:
 

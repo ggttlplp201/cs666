@@ -51,6 +51,26 @@ class PaperBroker(ExecutionInterface):
     buy_fee_pct: float = 0.0
     slippage_pct: float = 0.005
     fill_fraction: float = 0.25
+
+    # --- resting (passive) orders -------------------------------------------
+    # order_ttl_days = 1 keeps the original semantics: one settlement attempt,
+    # then the order is dropped and the strategy re-decides. >1 lets a
+    # left-side limit WAIT for its dip instead of crossing the spread.
+    #
+    # A resting fill is optimistic by nature — it assumes we were in the queue
+    # at that price — so it is deliberately handicapped relative to a marketable
+    # order (constraints suggested in review, 2026-07-27):
+    #   * passive_fill_fraction: a much smaller slice of the day's volume than
+    #     an aggressive order gets — we are behind an unknown queue.
+    #   * require_observed_book: never fill against a carried-forward quote;
+    #     a stale book is not executable liquidity.
+    #   * adverse_selection_pct: passive buys fill disproportionately when the
+    #     price is falling. Charge for it until live data says otherwise.
+    order_ttl_days: int = 1
+    passive_fill_fraction: float = 0.10
+    require_observed_book: bool = True
+    adverse_selection_pct: float = 0.0
+
     pending: list[Order] = field(default_factory=list)
     fills: list[Fill] = field(default_factory=list)
     _seen_order_ids: set[str] = field(default_factory=set)
@@ -89,23 +109,43 @@ class PaperBroker(ExecutionInterface):
         don't each get a fresh book."""
         ts = pd.Timestamp(fill_day)
         done: list[Fill] = []
+        resting: list[Order] = []
         capacity: dict[tuple[str, Side], int] = {}
         for order in self.pending:
+            age = (fill_day - order.day).days
+            passive = age > 1          # beyond its first settlement attempt
             df = self.panel.frames.get(order.item)
             if df is None or ts not in df.index:
+                # no market today — the order keeps waiting if it has TTL left
+                if age < self.order_ttl_days:
+                    resting.append(order)
                 continue
             row = df.loc[ts]
-            key = (order.item, order.side)
+            stale_book = (
+                self.require_observed_book
+                and "is_observed" in row.index
+                and not bool(row["is_observed"])
+            )
+            if passive and stale_book:
+                # carried quote: not executable, but the order stays live
+                if age < self.order_ttl_days:
+                    resting.append(order)
+                continue
+            key = (order.item, order.side, passive)
             if key not in capacity:
                 volume = int(max(row["volume"], 0))
-                by_volume = max(int(volume * self.fill_fraction), 1 if volume > 0 else 0)
+                frac = self.passive_fill_fraction if passive else self.fill_fraction
+                by_volume = max(int(volume * frac), 1 if volume > 0 else 0)
                 depth_col = "listing_count" if order.side == Side.BUY else "buy_order_count"
                 capacity[key] = min(by_volume, int(max(row[depth_col], 0)))
-            fill = self._try_fill(order, row, fill_day, max_qty=capacity[key])
+            fill = self._try_fill(order, row, fill_day, max_qty=capacity[key],
+                                  passive=passive)
             if fill is not None:
                 capacity[key] -= fill.qty
                 done.append(fill)
-        self.pending = []
+            elif age < self.order_ttl_days:
+                resting.append(order)
+        self.pending = resting
         self.fills.extend(done)
         for f in done:
             if f.order.side == Side.BUY:
@@ -117,7 +157,7 @@ class PaperBroker(ExecutionInterface):
         return done
 
     def _try_fill(self, order: Order, row: pd.Series, fill_day: date,
-                  max_qty: int) -> Fill | None:
+                  max_qty: int, passive: bool = False) -> Fill | None:
         """Limit semantics are hard bounds: a buy never pays above its limit,
         a sell never receives below its limit — slippage applies inside them."""
         volume = int(max(row["volume"], 0))
@@ -128,6 +168,11 @@ class PaperBroker(ExecutionInterface):
             if order.limit_price < ask:
                 return None
             px = min(ask * (1 + self.slippage_pct), order.limit_price)
+            if passive:
+                # a passive buy that fills was, on average, hit by a seller
+                # walking the price down — book the expected drift against us
+                px *= 1 + self.adverse_selection_pct
+                px = min(px, order.limit_price) if self.adverse_selection_pct < 0 else px
             qty = min(order.qty, max_qty)
             return Fill(order=order, fill_day=fill_day, fill_price=px, qty=qty,
                         fee=qty * px * self.buy_fee_pct)

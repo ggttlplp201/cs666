@@ -31,10 +31,30 @@ class Ledger:
     lots: list[Lot] = field(default_factory=list)
     fills: list[Fill] = field(default_factory=list)
     pending_settlements: list[tuple[date, float]] = field(default_factory=list)
+    # Cash backing buy orders that are RESTING on the book. A resting order is
+    # a real claim on cash: without this, one balance could back unlimited
+    # simultaneous orders and several filling on the same day would overdraw.
+    # Keyed by client_order_id so an expiry releases exactly what it committed.
+    open_order_cash: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.cash is None:
             self.cash = self.starting_cash
+
+    # -------------------------------------------------- resting-order capital
+    def commit_order_cash(self, order_id: str, amount: float) -> None:
+        if amount > 0:
+            self.open_order_cash[order_id] = amount
+
+    def release_order_cash(self, order_id: str) -> float:
+        return self.open_order_cash.pop(order_id, 0.0)
+
+    def committed_cash(self) -> float:
+        """Cash already claimed by resting buy orders — not spendable."""
+        return sum(self.open_order_cash.values())
+
+    def spendable_cash(self) -> float:
+        return max(self.cash - self.committed_cash(), 0.0)
 
     def settle_cash(self, on_day: date) -> float:
         """Mature sale receivables into spendable cash. Call once per cycle."""

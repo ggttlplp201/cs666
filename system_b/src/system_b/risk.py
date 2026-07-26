@@ -291,7 +291,9 @@ class RiskGate:
         # slip buffer for safety against config drift
         slip = float(cfg.get("execution", {}).get("slippage_pct", 0.005))
         unit_cost = order.limit_price * (1 + slip)
-        available = ledger.cash - res.cash
+        # cash claimed by buy orders still resting on the book is NOT spendable
+        committed = ledger.committed_cash() if hasattr(ledger, "committed_cash") else 0.0
+        available = ledger.cash - committed - res.cash
         if qty * unit_cost > available:
             qty = int(max(available, 0.0) // unit_cost)
             reasons.append("shrunk_to_cash")
