@@ -18,8 +18,15 @@ PLACEHOLDER = "PLACEHOLDER"
 
 
 def load_env(repo_root: Path) -> None:
-    """Populate os.environ from .env without overriding existing values."""
+    """Populate os.environ from .env without overriding existing values.
+
+    `repo_root` is the system folder (system_a/ or system_b/); the single
+    shared `.env` lives one level up at the repo root, so fall back to the
+    parent rather than duplicating secrets per system.
+    """
     env_file = repo_root / ".env"
+    if not env_file.exists():
+        env_file = repo_root.parent / ".env"
     if not env_file.exists():
         return
     for line in env_file.read_text().splitlines():

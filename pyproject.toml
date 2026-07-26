@@ -25,8 +25,13 @@ monitor = ["scrapling[fetchers]"]   # live news/announcement scraping (optional;
                                     # monitor degrades gracefully without it)
 
 [tool.setuptools.packages.find]
-where = ["src"]
+# Two self-contained systems, one per top-level folder (see README "Layout").
+where = ["system_a/src", "system_b/src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
+# Running pytest at the root exercises both suites; `cd system_a && pytest`
+# (or system_b) runs one system alone via that folder's conftest.py.
+# Package names don't collide: A owns `shared`/`system_a`, B owns
+# `shared_b`/`system_b`.
+pythonpath = ["system_a/src", "system_b/src"]
+testpaths = ["system_a/tests", "system_b/tests"]

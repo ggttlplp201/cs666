@@ -70,6 +70,34 @@ risk_controls:
   reentry_cooldown_after_stop_days: 3   # canonical name for shared.yaml's
                                         # "revenue_cooldown_after_stop_days"
 
+  # Items in the collected real panel (shared_b/real_panel.py). Supply,
+  # case price and aesthetics are human/vendor-supplied (HANDOFF §B) and are
+  # NOT available for these, so every one fails the STRUCTURAL gates
+  # (supply_unknown, case_price<80). Allowlisting waives only those; the
+  # SAFETY gates — bid depth, 20d average volume, pump/parabolic shape —
+  # stay fully enforced (see system_b/filters.py apply_hard_filters).
+  # No effect on synthetic runs: those items have different names.
+  allowlist:
+    - "AK-47 | Redline (Field-Tested)"
+    - "AUG | Chameleon (Field-Tested)"
+    - "AWP | Asiimov (Field-Tested)"
+    - "Desert Eagle | Conspiracy (Field-Tested)"
+    - "FAMAS | Mecha Industries (Field-Tested)"
+    - "Galil AR | Chatterbox (Field-Tested)"
+    - "M4A1-S | Cyrex (Field-Tested)"
+    - "M4A1-S | Decimator (Field-Tested)"
+    - "M4A1-S | Printstream (Field-Tested)"
+    - "M4A4 | Asiimov (Field-Tested)"
+    - "M4A4 | Desolate Space (Field-Tested)"
+    - "M4A4 | Neo-Noir (Field-Tested)"
+    - "MP5-SD | Phosphor (Field-Tested)"
+    - "MP9 | Starlight Protector (Field-Tested)"
+    - "P2000 | Fire Elemental (Field-Tested)"
+    - "R8 Revolver | Llama Cannon (Field-Tested)"
+    - "SG 553 | Cyrex (Field-Tested)"
+    - "SSG 08 | Dragonfire (Field-Tested)"
+    - "USP-S | Kill Confirmed (Field-Tested)"
+
 # --- Accumulation-signal detector params (Shared §3.4 operationalized) --------
 accumulation_params:
   window: 20                 # S1 sideways window (days)

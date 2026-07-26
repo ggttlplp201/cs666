@@ -1,0 +1,157 @@
+# config/shared.yaml
+# Hot-editable knobs shared by Systems A & B (see docs/Shared §12).
+# These are STARTING DEFAULTS from the docs — tune via backtest, don't trust blindly.
+# Editing + reload changes behavior with NO code redeploy. Secrets live in .env (never here).
+
+meta:
+  primary_venue: buff163
+  currency: CNY
+  kill_switch: false          # true = halt ALL buying immediately
+
+# --- Currency / FX (docs Shared §2a) ------------------------------------------
+# cs2.sh normalizes ALL prices to USD — including BUFF, which trades in CNY.
+# The ledger, fees, and capital are CNY; the normalizer converts feed prices
+# USD→CNY at this rate. Never assume a feed price is CNY.
+fx:
+  feed_currency: USD          # what cs2.sh delivers
+  ledger_currency: CNY        # what the ledger/fees/capital are booked in
+  usd_cny_rate: 7.25          # static rate for now; TODO(Leon): live FX source
+
+# --- Costs & market mechanics -------------------------------------------------
+costs:
+  # ⚠ Fees are a property of the DATA SOURCE / venue, never a global constant:
+  # a backtest on source=steam rows must pay Steam's fee, not BUFF's.
+  buff_fee_pct: 0.015         # BUFF CS2 sell fee CUT 2.5%->1.5% on 2026-04-14 (buff.163.com/news/87397)
+  fee_history:                # dated BUFF seller-fee schedule — historical backtests
+    - until: "2026-04-14"     # use the fee of the era, not today's (exclusive bound)
+      fee_pct: 0.025
+  steam_fee_pct: 0.15         # Steam Community Market CS2 sale fee (~5% Steam + 10% game)
+  buy_fee_pct: 0.0            # buyer pays listed price (no buyer fee)
+  withdrawal_fee_pct: 0.01    # 1% on cash-out (not per-trade); cap raised to 50k CNY/withdrawal
+  model_round_trip_fees: true # always deduct fees before calling a trade profitable
+cooldown:
+  trade_lock_days: 7          # T+7 Valve-side item lock — blocks re-list/sell before unlock
+  settlement_days: 7          # BUFF releases SELLER FUNDS only after the 7d Trade Protection
+                              # window (since 2025-07-16) — sale proceeds are receivables, not cash
+  # note: since ~mid-June 2026 unlocks roll exactly 168h after purchase (no more
+  # synchronized daily unlock wave at 15:00 UTC+8)
+
+# --- Capital & exposure -------------------------------------------------------
+capital:
+  total: 100000               # CNY — total capital (example)
+  max_locked_pct: 0.70        # cap on capital simultaneously T+7-locked
+position_sizing:              # "layers": 1 layer = 10% of a category's budget
+  layers_total: 10
+  baseline_deployed_pct: 0.50 # 5 layers baseline; 50% dry powder
+  per_item_max_layers: 6      # <=60% of an item's allocation
+  per_category_max_layers: 6  # <=60% in one sub-category
+  volume_relative_k: 0.35     # max_units = k * avg_daily_volume (0.2–0.5); exit-ability
+  never_all_in: true
+
+# --- Market regime → deployment ceiling (Shared §2) ---------------------------
+regime_ceilings_pct:
+  bull: 0.80
+  sideways: 0.50
+  bear: 0.30                  # + never average down in bear
+  weak: 0.20                  # small items only
+
+# --- Take-profit / stop-loss (hard brackets, Shared §6.3) ---------------------
+brackets:
+  take_profit_pct: [0.10, 0.15]
+  stop_loss_cut_pct: -0.10
+  stop_loss_liquidate_pct: -0.18   # -15% to -20% unconditional
+  average_down_in_bear: false
+
+# --- Selection hard filters (Shared §4.3) -------------------------------------
+# ⚠ total_supply_* thresholds are TOTAL EXISTING QUANTITY (存世量) — NOT the
+# feed's ask_volume, which is only the current LISTING COUNT (a small
+# fraction of supply). Never map these to listings. True total_supply needs
+# cs2.sh /v1/archive/history (Scale tier) — unavailable in Phase 1.
+selection_filters:
+  total_supply_sweet_spot: [2000, 10000]     # high-conviction / FN
+  total_supply_broad: [10000, 30000]         # safer-liquidity
+  total_supply_hard_exclude_above: 50000
+  case_price_min_cny: 80
+  min_valid_buy_orders: 3
+  min_daily_trades: 10                 # 20–40 = healthy; NOT enforceable on
+                                       # cs2.sh Developer tier (no executed volume)
+  allow_unknown_volume: false          # false = refuse buys when volume data is
+                                       # missing (conservative); true = trade on
+                                       # depth alone with bid-count sizing
+
+# --- Volatility-targeted sizing (Shared §11, paper-derived, secondary) --------
+volatility_targeting:
+  enabled: true
+  method: garch_1_1
+  size_inverse_to_vol: true            # smaller size when forecast vol high
+  target_daily_vol: 0.02               # scale = target / forecast (clamped 0.25-1.5)
+
+# --- Manipulation / blocklist (Shared §8) -------------------------------------
+risk_controls:
+  blocklist: []               # item hashes to never buy (late-stage pumps)
+  allowlist: []               # optional hard-include
+  daily_loss_limit_pct: -0.05 # trips the loss-limit latch (halts new buys)
+  weekly_loss_limit_pct: -0.10
+  halt_days_after_loss_limit: 5        # tripped limit LATCHES this many days
+  revenue_cooldown_after_stop_days: 3  # no revenge-trading same item (applies to adds too)
+
+# --- Indicator parameters (Shared §3) — added by Builder 1, starting defaults --
+indicators:
+  bollinger_window: 20
+  bollinger_num_std: 2.0
+  volume_baseline_window: 14      # snapshots used for the volume baseline
+  flat_price_pct: 0.01            # |change| below this counts as "flat"
+  volume_high_ratio: 1.5          # volume ≥ ratio×baseline counts as "volume up"
+  volume_low_ratio: 0.7           # volume ≤ ratio×baseline counts as "volume down"
+
+# --- Market-regime classifier (Shared §2) — added by Builder 1 -----------------
+regime:
+  breadth_window: 20              # snapshots for middle-band/MA breadth
+  bull_breadth_min: 0.60          # share of primaries above middle band
+  bear_breadth_max: 0.35
+  weak_volume_ratio_max: 0.50     # aggregate volume vs baseline ⇒ weak/low-liquidity
+
+# --- Data sources (keys in .env; names here) — phased strategy, Shared §2a ----
+# Live  = Steam Market via Scrapling (free, no key, source=steam_live).
+# BUFF historical = iflow archive (source=buff_iflow, 2022→2026-05).
+# Backtest history = Steam pricehistory (STEAM_LOGIN_SECURE cookie).
+# cs2.sh was DROPPED 2026-07-25 (demo key expired/401; paid tier not worth it
+# once Steam-via-Scrapling covered live liveness). csmarketapi disqualified for
+# BUFF163; pricempire is a Phase-2 paid option if BUFF live data is ever needed.
+data:
+  phase: 1                             # 1 = free validation; 2 = paid history/archive
+  live_feed: steam                     # free Steam-via-Scrapling (no key)
+  history_feed: steam_pricehistory     # Phase 1: FREE Steam daily median + qty sold
+  refresh_seconds: 300
+  pause_trading_on_stale_or_divergent: true
+  collect_snapshots: true              # self-collect forward — no vendor sells this history
+  snapshot_poller:                     # persist a live price snapshot every cycle
+    enabled: true
+    db_path: var/market.db
+    live_source: steam_live            # stored source the dashboard treats as "live"
+  steam_history:                       # Phase-1 backtest ingestion (src/shared/steam_history.py)
+    items_file: config/steam_backtest_items.txt
+    cache_dir: var/steam_history
+    request_gap_seconds: 4.0           # Steam 429s aggressively; be polite
+    backoff_start_seconds: 60.0        # exponential from here on 429, max 5 retries
+    source_tag: steam                  # store rows tagged so Steam never mixes with BUFF
+  iflow_archive:                       # FREE historical BUFF bid/ask+ladders (src/shared/iflow_history.py)
+    # iflow.work Datadump Priority Archive: twice-daily snapshots 2022-04-18 →
+    # 2026-05-20, USD-normalized, keyless. Rows land as source=buff_iflow.
+    base_url: https://api.iflow.work/export
+    dir_name: priority_archive
+    cache_dir: var/iflow_archive
+    request_gap_seconds: 1.0
+    source_tag: buff_iflow
+    event_window_pre_days: 30          # files pulled around each historical event
+    event_window_post_days: 65
+    files_per_day: 1                   # 1 = daily sampling (archive has 2/day)
+
+# --- Execution (path chosen in HANDOFF; credentials in .env) ------------------
+execution:
+  buff_path: official          # "official" (BUFF API) | "session" (unofficial)
+  paper_mode: true             # START HERE — flip to false only after go-live gate
+  idempotent_order_ids: true
+  reconcile_every_cycle: true
+  slippage_pct: 0.005          # paper-fill slippage inside the limit bound
+  fill_fraction: 0.25          # max share of one day's executed volume we can fill
