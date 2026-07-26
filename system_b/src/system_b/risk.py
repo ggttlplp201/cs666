@@ -270,7 +270,19 @@ class RiskGate:
         # volatility targeting: scale DOWN when forecast vol is high
         scale = self.vol_scale(garch_vol)
         if scale < 1.0:
-            qty = int(qty * scale)
+            scaled = int(qty * scale)
+            # Skins trade in whole units, so on an expensive item the scaled
+            # size floors to 0 and the order is REJECTED outright rather than
+            # sized down — measured on the real panel, that alone makes 11 of
+            # 19 items unbuyable at 100k CNY. `min_units_after_scaling: 1`
+            # keeps the smallest tradeable position instead of dropping the
+            # order. Default 0 preserves reject-at-zero.
+            vt = self.cfg.get("volatility_targeting", {})
+            min_units = int(vt.get("min_units_after_scaling", 0))
+            if scaled <= 0 and min_units > 0 and qty >= 1:
+                scaled = min(min_units, qty)
+                reasons.append(f"vol_floor_{scaled}u")
+            qty = scaled
             reasons.append(f"vol_scaled_{scale:.2f}")
 
         # cash check (cannot spend locked/inventory value or cash claimed by

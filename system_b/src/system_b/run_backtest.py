@@ -42,6 +42,14 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--capital", type=float, default=None,
                     help="override capital.total (CNY) — sizing rounds to zero on "
                          "expensive items when capital is small")
+    ap.add_argument("--batches", type=int, default=None,
+                    help="override staged_entry.batches_per_item (fewer = bigger chunks)")
+    ap.add_argument("--min-units", type=int, default=None,
+                    help="keep N units when vol scaling would floor the size to 0 "
+                         "(default: reject the order)")
+    ap.add_argument("--entry-discount", type=float, default=None,
+                    help="override entry.entry_limit_discount_pct; 0 = take the ask "
+                         "instead of resting below it (abandons left-side entry)")
     args = ap.parse_args(argv)
 
     cfg = load_config("b")
@@ -49,6 +57,12 @@ def main(argv: list[str] | None = None) -> dict:
         cfg.setdefault("model", {})["type"] = args.model
     if args.capital:
         cfg.setdefault("capital", {})["total"] = args.capital
+    if args.batches:
+        cfg.setdefault("staged_entry", {})["batches_per_item"] = args.batches
+    if args.min_units is not None:
+        cfg.setdefault("volatility_targeting", {})["min_units_after_scaling"] = args.min_units
+    if args.entry_discount is not None:
+        cfg.setdefault("entry", {})["entry_limit_discount_pct"] = args.entry_discount
     if args.model_sub:
         cfg.setdefault("entry", {}).setdefault(
             "model_signal_substitution", {})["enabled"] = True

@@ -174,3 +174,48 @@ def test_daily_loss_limit_halts():
     g.record_equity(date(2026, 1, 9), 100_000)
     halted = g.trading_halted(date(2026, 1, 10), 94_000)   # -6% day
     assert "daily_loss_limit" in halted
+
+
+# ------------------------------------------- vol scaling on whole-unit assets
+def _gate_min_units(n: int):
+    cfg = dict(CFG)
+    cfg["volatility_targeting"] = dict(CFG["volatility_targeting"])
+    cfg["volatility_targeting"]["min_units_after_scaling"] = n
+    return RiskGate(cfg, RiskState())
+
+
+def test_vol_scaling_rejects_when_it_floors_a_small_order_to_zero():
+    """Default behaviour: skins trade in whole units, so a 1-unit order at high
+    forecast vol scales to 0 and is REJECTED — on the real panel this alone
+    makes 11 of 19 items unbuyable at 100k CNY."""
+    d = _check(_gate(), _order(qty=1), Ledger(100_000), vol=0.20)  # scale 0.25
+    assert not d.approved
+    assert d.qty == 0
+    assert any("vol_scaled" in r for r in d.reasons)
+
+
+def test_min_units_keeps_the_smallest_tradeable_position_instead():
+    d = _check(_gate_min_units(1), _order(qty=1), Ledger(100_000), vol=0.20)
+    assert d.approved
+    assert d.qty == 1
+    assert any("vol_floor" in r for r in d.reasons)
+
+
+def test_min_units_never_rounds_a_zero_qty_order_up():
+    """The floor rescues a scaled-down order; it must not invent size where the
+    caller asked for none."""
+    d = _check(_gate_min_units(1), _order(qty=0), Ledger(100_000), vol=0.20)
+    assert not d.approved and d.qty == 0
+
+
+def test_min_units_never_exceeds_the_requested_size():
+    d = _check(_gate_min_units(5), _order(qty=2), Ledger(100_000), vol=0.20)
+    assert d.approved and d.qty <= 2
+
+
+def test_min_units_leaves_normally_sized_orders_untouched():
+    """It only applies when scaling floors to zero — a big order still scales."""
+    plain = _check(_gate(), _order(qty=100), Ledger(100_000), vol=0.20)
+    floored = _check(_gate_min_units(1), _order(qty=100), Ledger(100_000), vol=0.20)
+    assert plain.qty == floored.qty > 1
+    assert not any("vol_floor" in r for r in floored.reasons)

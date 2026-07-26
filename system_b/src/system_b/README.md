@@ -147,11 +147,52 @@ where the forecast is actually informative, and there (real data) the orders
 never filled.
 
 **Net: the ranker still has not been shown to improve P&L, and the substitution
-stays off by default.** Its edge on real data is real and measured; the path
-from that edge to a filled order is blocked by sizing granularity and a
-single-shot left-side limit, not by the ranking. The next thing to test is
-sizing — capital, `batches_per_item`, or rounding up instead of rejecting when
-the vol-scaled quantity hits zero — not the model.
+stays off by default.**
+
+### The structural verdict: the spread is bigger than the edge
+
+Unblocking the funnel one layer at a time (capital, `batches_per_item`,
+`min_units_after_scaling`, then the entry limit) finally let the strategy trade
+properly — and that is what produced the real answer.
+
+| Variant | Trades | Win rate | Avg trade (net) | Order fill rate |
+|---|---|---|---|---|
+| baseline (left-side limit) | 3 | 67% | −1.81% | 27% |
+| + capital 500k / 2 batches / min-units 1 | 3 | 67% | −1.81% | 20% |
+| **+ take the ask instead of resting below it** | **9** | **0%** | **−5.67%** | **86%** |
+
+Sizing was not the wall either: those knobs raised approved orders 11 → 15 and
+units 97 → 375, but 4 of 5 orders still expired unfilled, because the left-side
+limit (`ask × 0.995`) needs an overnight dip and unfilled orders do not rest.
+
+Take the ask and it trades — and loses on **every single trade**. The reason is
+arithmetic, not strategy:
+
+```
+BUFF bid-ask spread on this panel:  median 3.37%,  mean 4.44%
++ sell fee                                              1.50%
+= round-trip cost                   median 4.87%,  mean 5.94%
+measured average trade                              −5.67%
+```
+
+**The entire loss is the spread.** Gross of costs the strategy is roughly flat;
+net of crossing a ~4.4% spread plus the fee, it cannot win. A rank IC of 0.137
+over a 21-day horizon does not produce >6% per trade.
+
+This is the same wall System A hit — measured spreads killed reactive entry
+there too (`system_a/` spread study). It is a property of BUFF's book on this
+universe, not of either strategy's logic.
+
+What would have to change for System B to be viable, in order of leverage:
+
+1. **Don't cross the spread.** The left-side design is right; it just needs
+   orders that *rest* across days rather than expiring same-day. That is a real
+   change to `shared_b/execution.py`, and it trades fill rate for cost.
+2. **Trade a tighter-spread universe.** Median 3.37% is the binding number;
+   higher-liquidity items would move it.
+3. **A longer horizon**, so one round-trip cost is amortised over a bigger move.
+
+Improving the model is not on that list.
 
 Two known limitations, documented rather than fixed:
 

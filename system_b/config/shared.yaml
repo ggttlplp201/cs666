@@ -85,6 +85,11 @@ volatility_targeting:
   method: garch_1_1
   size_inverse_to_vol: true            # smaller size when forecast vol high
   target_daily_vol: 0.02               # scale = target / forecast (clamped 0.25-1.5)
+  min_units_after_scaling: 0           # skins trade in whole units, so on an
+                                       # expensive item the scaled size floors to
+                                       # 0 and the order is REJECTED, not sized
+                                       # down. 0 keeps that behaviour; 1 takes
+                                       # the smallest tradeable position instead.
 
 # --- Manipulation / blocklist (Shared §8) -------------------------------------
 risk_controls:
