@@ -151,6 +151,15 @@ _TRADE_UP_GOLD = re.compile(r"\b(knife|knives|glove|gloves|covert|gold|rare spec
 _WATCH = re.compile(r"\bcache\s+collection\b", re.I)
 
 
+#: Platforms that ARE Valve speaking. A post from here is first-party by
+#: provenance — no wording test can be more reliable than that.
+FIRST_PARTY_PLATFORMS = frozenset({"official_blog"})
+
+
+def _is_first_party(post: RawPost) -> bool:
+    return post.platform in FIRST_PARTY_PLATFORMS
+
+
 class KeywordClassifier:
     """Deterministic rule-based classifier — paper-mode default."""
 
@@ -168,9 +177,16 @@ class KeywordClassifier:
         # the engine maps it to all gold-case coverts. Gated on knife/glove
         # crafting language so ordinary "trade up" chatter doesn't fire.
         if _TRADE_UP.search(text) and _TRADE_UP_GOLD.search(text):
-            kind = (SignalType.OFFICIAL_ANNOUNCEMENT if _OFFICIAL.search(text)
+            # Officialness is a property of the SOURCE, not of the wording.
+            # Valve titles its own posts "Counter-Strike 2 Update" and never
+            # says "patch notes", so keyword-matching demoted the real
+            # 2025-10-22 announcement — first-party Valve copy — to a 0.6
+            # "leak". Verified against the live Steam news item for that date
+            # (see tests/fixtures/steam_news_2025-10-22.json).
+            official = _is_first_party(post) or bool(_OFFICIAL.search(text))
+            kind = (SignalType.OFFICIAL_ANNOUNCEMENT if official
                     else SignalType.UPDATE_LEAK)
-            conf = 0.9 if kind == SignalType.OFFICIAL_ANNOUNCEMENT else 0.6
+            conf = 0.9 if official else 0.6
             return Classification(
                 kind, (), Direction.BULLISH, conf,
                 event_rule="trade_up_pool_change",

@@ -1,0 +1,44 @@
+[
+ {
+  "gid": "1813674388884503",
+  "title": "Counter-Strike 2 Update",
+  "date": 1760480890,
+  "day": "2025-10-14",
+  "contents": "\\Updated engine code to the latest version of Source 2.Reworked bullet penetration simulation to reduce CPU usage.Improved core utilization of some client particle and sound effects processing, reducing overall CPU usage when players are shooting.\\Defusing C4 will now lower the viewmodel weapon, prevent scoping, and delay firing the weapon by 150ms after exiting the defuse.C4 will no longer detonate in the middle of halftime intermission or after the end of the match.Fixed a case where 1 tick was incorrectly subtracted from sv_predictable_damage_tag_ticks.\\Major Highlight clips are now viewable from the Spectator Loadout.Selected player is now more visible in the Team Counter.Context menu in the Inventory now opens in a position relative to the cursor.HUD weapon mode indicator has been moved to the ammo count.Raindrops are now removed from weapons when switching to a dry inspect environment.\\cs_script enums can now be imported and behave the same as TypeScript enums.CSWeaponType.PISTOL == 1CSWeaponType\\ == \"PISTOL\"Added enums CSRoundEndReason, CSHitGroup, CSLoadoutSlot, CSDamageTypes, CSDamageFlags and CSWeaponAttackTypeAdded BOOSTS value to CSGearSlot. This is the gear slot for healthshots.Updated Instance.OnRoundEnd to now receive the reasonUpdated Instance.OnBeforePlayerDamage to now receive damageType and damageFlags and the result can now modify damageType and damageFlagsUpdated Instance.OnPlayerDamage to now receive damageType and damageFlagsUpdated Instance.OnKnifeAttack to now receive attackTypeUpdated Instance.TraceLine, Instance.TraceSphere and Instance.TraceBoxThe trace config now accepts an array of ignore entities or just oneThe trace config can specify to trace against hitboxesThe trace result will include hitGroup if tracing against hitboxesUpdated Instance.BulletTrace result to include hitGroupUpdated Entity.TakeDamage to accept damageType and damageFlagsAdded CSWeaponData.GetGearSlot()"
+ },
+ {
+  "gid": "1813674388920331",
+  "title": "Counter-Strike 2 Update",
+  "date": 1760573182,
+  "day": "2025-10-16",
+  "contents": "\\Fixed a case of incorrect damage report data at the end of the rounds.Updated King Crasswater and Queen Ava stickers for clarity.Skinning fixes on Driver Gloves and Sport Gloves.Fixed a crash when playing back some demo files.Stability improvements."
+ },
+ {
+  "gid": "1814309641424631",
+  "title": "Re-Retakes",
+  "date": 1761174008,
+  "day": "2025-10-22",
+  "contents": "{STEAM_CLAN_IMAGE}/3381077/aae1ceb26e12464542579430a2436c8348461b5c.pngThe bomb has been planted and you're running out of time. It's the return of retakes! In this classic game mode, each round drops you in to a fast-paced 4v3 after-plant scenario. Select your loadout card each round, check the map to coordinate with your teammates, and use your resources wisely to defuse (or defend) the planted bomb.The clock is ticking, what are you waiting for? Jump into a retakes server now!"
+ },
+ {
+  "gid": "1814309641424632",
+  "title": "Counter-Strike 2 Update",
+  "date": 1761174020,
+  "day": "2025-10-22",
+  "contents": "\\Adding Retakes as official game mode supporting Defusal Group Alpha and Defusal Group Delta maps on official matchmaking servers.Fixed Molotov and Smoke interaction logic in cases when multiple smokes are active in the map.\\Updated Golden to the latest version from Steam Community Workshop (Update Notes)Updated Palacio to the latest version from Steam Community Workshop (Update Notes)Updated Rooftop to the latest version from Steam Community Workshop (Update Notes)InfernoAdjustments to top of Quad and under Balcony to improve visibility.Various optimizations.\\Extended functionality of the \"Trade Up Contract\" to allow exchanging 5 items of Covert quality as follows:5 StatTrak\u2122 Covert items can be exchanged for one StatTrak\u2122 Knife from a collection of one of the items provided5 regular Covert items can be exchanged for one regular Knife item or one regular Gloves item from a collection of one of the items provided\\Performance optimizations when the game is in the main menu and item inspect UIFixed inventory item icons sometimes rendering in blurry state or not renderingFixed several server-only sound events to not start multiple timesStability improvements"
+ },
+ {
+  "gid": "1814309641454326",
+  "title": "Counter-Strike 2 Update",
+  "date": 1761258728,
+  "day": "2025-10-23",
+  "contents": "\\Increased matchmaking party size for Retakes to allow 4 players in a party.Fixed a case where players joining Retakes round during freeze time could spawn at a wrong spawn point.Fixed bot manager logic to make room for players by first kicking dead bots and bots who are not controlled by a human.\\Stability improvements."
+ },
+ {
+  "gid": "1815034432852394",
+  "title": "Counter-Strike 2 Update",
+  "date": 1761780997,
+  "day": "2025-10-29",
+  "contents": "\\Improved player movement prediction when colliding with other moving players.Added scope in/out sound prediction to play immediately for local player.Retake loadout cards will now randomly offer M4A1-S or M4A4 if player has both equipped in their CT loadout.Added Body Armor to 4v3, 4 Bad Guys Left, and Blind Fire cards.Added Dual Berettas to T Blind Fire card.Replaced Flashbang with HE Grenade on CT Enemy Loadout CardFixed idle animations on CZ75-Auto, SSG 08, AUG, Galil AR.Performance improvements.Stability improvements.Improvements to animation fidelity during demo playback."
+ }
+]
