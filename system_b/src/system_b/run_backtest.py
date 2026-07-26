@@ -54,6 +54,9 @@ def main(argv: list[str] | None = None) -> dict:
                     help="days a limit order rests before expiring (1 = no resting)")
     ap.add_argument("--adverse-selection", type=float, default=None,
                     help="price drift charged against passive fills, e.g. 0.01")
+    ap.add_argument("--soft-exit-pct", type=float, default=None,
+                    help="fraction of a lot sold by discretionary shape/regime "
+                         "exits (1.0 = whole lot; 0.5 = scale out like a TP trim)")
     args = ap.parse_args(argv)
 
     cfg = load_config("b")
@@ -71,6 +74,8 @@ def main(argv: list[str] | None = None) -> dict:
         cfg.setdefault("execution", {})["order_ttl_days"] = args.order_ttl
     if args.adverse_selection is not None:
         cfg.setdefault("execution", {})["adverse_selection_pct"] = args.adverse_selection
+    if args.soft_exit_pct is not None:
+        cfg.setdefault("brackets", {})["soft_exit_qty_pct"] = args.soft_exit_pct
     if args.model_sub:
         cfg.setdefault("entry", {}).setdefault(
             "model_signal_substitution", {})["enabled"] = True

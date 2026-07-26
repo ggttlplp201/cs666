@@ -61,6 +61,13 @@ brackets:
   stop_loss_cut_pct: -0.10
   stop_loss_liquidate_pct: -0.18   # -15% to -20% unconditional
   average_down_in_bear: false
+  # Take-profit trims HALF a lot, but the discretionary shape/regime exits used
+  # to sell the WHOLE lot — so the book collected many small gains and a few
+  # whole-position losses (measured: 9 winners avg 167 CNY vs 3 losers avg
+  # 2,915 CNY, a 75% win rate that still lost money). 1.0 keeps that behaviour;
+  # 0.5 makes a soft exit scale out the way a soft profit does. Hard stops are
+  # never scaled — a risk limit must still be able to liquidate.
+  soft_exit_qty_pct: 1.0
 
 # --- Selection hard filters (Shared §4.3) -------------------------------------
 # ⚠ total_supply_* thresholds are TOTAL EXISTING QUANTITY (存世量) — NOT the

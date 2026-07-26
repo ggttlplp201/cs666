@@ -50,6 +50,12 @@ class PositionalStrategy:
     # items with a working order from the previous cycle (fills at t+1) — do not
     # re-order until it settles/expires, else consecutive-day batch stacking
     last_order_day: dict[str, date] = field(default_factory=dict)
+    # Same problem on the sell side, but keyed by LOT: while a sell rests, the
+    # lot is still open, so the exit rules would re-issue an order for it every
+    # cycle. When the first one fills and closes the lot, the duplicates
+    # reference a dead lot. (Invisible until orders could rest — a fill-or-kill
+    # sell closed its lot on the very next settle.)
+    last_sell_day: dict[str, date] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.risk is None:
@@ -158,6 +164,14 @@ class PositionalStrategy:
         tp_lo, tp_hi = br.get("take_profit_pct", [0.10, 0.15])
         sl_cut = br.get("stop_loss_cut_pct", -0.10)
         sl_liq = br.get("stop_loss_liquidate_pct", -0.18)
+        # Profits are taken in halves but SOFT losses were taken in full, so the
+        # book filled with many small gains and a few whole-position losses —
+        # measured on the real panel: 9 winners averaging 167 CNY against 3
+        # losers averaging 2,915 CNY, i.e. a 75% win rate that still loses money.
+        # `soft_exit_qty_pct` scales the discretionary shape/regime exits the
+        # same way take-profit is scaled. The hard stops are NOT affected: a
+        # risk limit must still be able to liquidate.
+        soft_pct = float(br.get("soft_exit_qty_pct", 1.0))
         k = float(cfg.get("position_sizing", {}).get("volume_relative_k", 0.35))
         orders: list[Order] = []
 
@@ -177,9 +191,14 @@ class PositionalStrategy:
             bearish_event = any(e.direction == "bearish" and e.confidence >= 0.6 for e in events)
 
             sold_today = 0
+            sell_in_flight = max(1, int(cfg.get("execution", {}).get("order_ttl_days", 1)))
             for lot in ledger.unlocked_lots(day, item):
                 if sold_today >= day_sell_cap:
                     break
+                # a sell for this lot may still be working — don't stack another
+                prev_sell = self.last_sell_day.get(lot.lot_id)
+                if prev_sell is not None and (day - prev_sell).days <= sell_in_flight:
+                    continue
                 # Bracket triggers are measured ASK-side (same side we bought on;
                 # the crash-course +10-15%/-10% rules are chart/list prices).
                 # Measuring at the bid would start every lot ~spread+slippage
@@ -211,9 +230,13 @@ class PositionalStrategy:
                     and feat["vp_price_vs_zone"] < 0
                     and ret < 0
                 ):
+                    # a SOFT signal ("the shape looks distributive"), not a risk
+                    # limit — the hard stops above already own that job
                     reason = "distribution_shape_exit"
+                    sell_qty = max(int(lot.qty * soft_pct), 1)
                 elif regime.regime == Regime.BEAR and ret < -0.05:
                     reason = "bear_regime_cut"
+                    sell_qty = max(int(lot.qty * soft_pct), 1)
 
                 if reason is None:
                     continue
@@ -247,6 +270,7 @@ class PositionalStrategy:
                     detail={"lot": lot.lot_id, "ret_at_ask": ret, "buy_price": lot.buy_price},
                 )
                 orders.append(o)
+                self.last_sell_day[lot.lot_id] = day
                 sold_today += sell_qty
         return orders
 

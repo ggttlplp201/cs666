@@ -236,17 +236,53 @@ strategy books many small gains and a few large losses, so a 75% win rate still
 loses money. `distribution_shape_exit` has been the single largest P&L drain in
 every run since the first synthetic one.
 
-Remaining leverage, in order:
+### Exit policy: hypothesis tested and rejected
 
-1. **The exit policy.** Small trims vs whole-position stops is the shape that
-   turns a 75% win rate negative. This is now the binding constraint.
-2. **Cost-aware selection** — rank on `expected_return − expected round-trip
-   cost` rather than ranking on alpha and paying the cost afterwards.
-3. **A tighter-spread universe.** Median 3.37% is the number to beat.
-4. **A longer horizon**, so one round trip is amortised over a bigger move —
-   only if IC persists at 45–90 days, which is untested.
+The obvious read — "soft signals dump whole positions while profits are only
+trimmed, so make them symmetric" — is **wrong**, and the test says so:
 
-Improving the model is still not on that list.
+| `soft_exit_qty_pct` | Trades | Win% | Avg trade | Median trade |
+|---|---|---|---|---|
+| 1.0 (dump the lot) | 12 | 75% | **+1.21%** | +3.52% |
+| 0.5 (scale out) | 21 | 43% | −1.75% | −4.24% |
+| 0.25 (scale out) | 28 | 32% | −2.94% | −4.24% |
+
+`distribution_shape_exit` is *correct*: the positions it dumps keep falling, and
+holding half of one is strictly worse. The knob stays at 1.0.
+
+The "winners are 17× smaller than losers" figure that motivated this was largely
+a **measurement artifact** — it compared half-lot trims against whole-position
+exits. Limiting the left-side ladder (`--batches 4/2/1`) changes nothing either.
+
+### What is actually left
+
+Total return has sat at ≈ −0.06% through every variant, and that number is
+meaningless: **−337 CNY on 500,000 capital.** The book is ~1% deployed. Twelve
+trades in six months on 19 items cannot produce a portfolio result either way.
+The only figure with any signal in it is the per-trade average, and under
+resting orders that is **+1.21%** — real, but below the 3% go-live gate and on
+far too few trades to trust.
+
+So the honest state: entry, sizing, fills and exits have each been tested and
+none is now the binding constraint. What binds is **the opportunity set** — 19
+mid-tier Field-Tested skins, one 8-month window, a median 3.37% spread, and a
+21-day horizon. A ~3%/21-day edge cannot clear a ~6% round trip. That is
+arithmetic, and no amount of tuning inside this universe changes it.
+
+Two directions actually remain, and neither is a tweak to this strategy:
+
+1. **Widen the data, not the parameters.** 19 items is a search space too small
+   to find an edge in. More items and more history is the precondition for any
+   further conclusion here.
+2. **Trade a bigger effect, not a better model.** A 4.4% spread is fatal to a
+   3% edge and irrelevant to a 100%+ one. System A's measured trade-up /
+   gold-case ladder repricing (+713% event-specific, gold-case items ~40× the
+   market, and it passed both a time-placebo and a cross-section control) is the
+   only validated large-magnitude effect in this repo. It was parked because
+   *fuel selection* carried no alpha — but the effect itself was never the part
+   that failed.
+
+Improving the model remains a dead end.
 
 Two known limitations, documented rather than fixed:
 
