@@ -5,7 +5,7 @@ B := $(CURDIR)/system_b
 
 .PHONY: test test-a test-b \
         demo dashboard poll gap-check event-study spread-study exit-study \
-        b-panel b-backtest b-backtest-real b-dashboard
+        b-panel b-backtest b-backtest-real b-dashboard lag-study
 
 # ---------------------------------------------------------------- tests
 test:                 ## both systems
@@ -35,6 +35,9 @@ event-study:
 
 spread-study:
 	cd "$(A)" && PYTHONPATH=src "$(PY)" -m system_a.spread_study
+
+lag-study:
+	cd "$(A)" && PYTHONPATH=src "$(PY)" -m system_a.trade_up_lag
 
 exit-study:
 	cd "$(A)" && PYTHONPATH=src "$(PY)" -m system_a.exit_study
