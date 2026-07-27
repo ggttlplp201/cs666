@@ -202,6 +202,31 @@ def main(argv=None) -> int:
             if len(g) >= 5 and o:
                 excess[lag] = statistics.median(g) - statistics.median(o)
 
+        # Persist for the dashboard — recomputing this scans ~20 archive zips
+        # and takes minutes, far too slow for a page load. The dashboard reads
+        # the artifact and shows when it was produced, so a stale curve is
+        # visible as stale rather than silently wrong.
+        curve = []
+        for lag in sorted(wide):
+            common = set(wide[base_lag]) & set(wide[lag])
+            g = [wide[lag][n] for n in common
+                 if cmap.is_gold_case_covert(n.split(" (")[0])]
+            o = [wide[lag][n] for n in common
+                 if not cmap.is_gold_case_covert(n.split(" (")[0])]
+            if len(g) >= 5 and o:
+                curve.append({"lag": lag, "n": len(g),
+                              "gold": statistics.median(g),
+                              "rest": statistics.median(o),
+                              "excess": statistics.median(g) - statistics.median(o)})
+        out = repo / "var" / "lag_decay.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        # freshness comes from the artifact's own mtime — no clock field to
+        # drift out of sync with the file
+        out.write_text(json.dumps({
+            "event": EVENT, "hold_days": HOLD_DAYS, "fee": FEE, "curve": curve,
+        }, indent=1))
+        print(f"\n   curve -> {out}")
+
         print("\n== VERDICT ==")
         if not excess:
             print("   NOT ESTABLISHED — no lag has a readable gold-case basket.")

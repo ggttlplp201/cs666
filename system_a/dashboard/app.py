@@ -1,11 +1,22 @@
-"""System A research dashboard — READ-ONLY by construction.
+"""System A operator dashboard, READ-ONLY by construction.
 
 No trading controls, no config mutation, no secrets (never touches .env).
-Reads: var/market.db, var/provenance_a.jsonl, config/*.yaml, and recomputes
-the event/spread studies from the same modules the CLI uses (single source
-of truth — no stale report files).
+Reads: var/market.db, var/alerts.jsonl, var/lag_decay.json,
+var/provenance_a.jsonl, config/*.yaml, and recomputes the event and spread
+studies from the same modules the CLI uses (single source of truth, no stale
+report files).
 
-Launch:  make dashboard   (or: .venv/bin/streamlit run dashboard_a/app.py)
+Written for an OPERATOR, not a developer. Four views answer four questions:
+
+    NOW       is anything happening, and is the machine alive
+    TIMELINE  what has happened, and what did it do to prices
+    OUTLOOK   what to do when the next event fires, and where it may come from
+    EVIDENCE  why we believe any of this
+
+The developer-facing detail (per-rule scorecards, gap reports, raw decision
+provenance) is kept under EVIDENCE rather than on the front page.
+
+Launch:  make dashboard
 """
 
 from __future__ import annotations
@@ -22,98 +33,81 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-# Muted, CVD-safe accents — highlight (teal) vs recessive (gray); signed P&L
-# uses a diverging green/red with a neutral zero, always paired with value labels.
-HILITE, MUTED = "#0d9488", "#94a3b8"
-POS, NEG = "#15803d", "#b91c1c"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from theme import CSS, HIVIS, INK, MUTED, NEG, POS, STEEL, chart_style  # noqa: E402
+from shared.configuration import Config                      # noqa: E402
+from shared.store import SnapshotStore                       # noqa: E402
+from system_a.event_study import run_event_study             # noqa: E402
+from system_a.rules import RulesTable                        # noqa: E402
+from system_a.spread_study import spread_stats               # noqa: E402
+
+st.set_page_config(page_title="CS2 event desk", layout="wide",
+                   initial_sidebar_state="collapsed")
+st.markdown(CSS, unsafe_allow_html=True)
 
 
-def _style(chart):
-    """Shared clean styling: no chart junk, recessive axes, consistent type."""
-    return (chart
-            .configure_view(strokeWidth=0)
-            .configure_axis(grid=False, labelColor="#64748b", titleColor="#64748b",
-                            labelFontSize=12, titleFontSize=11, domainColor="#e2e8f0",
-                            tickColor="#e2e8f0")
-            .configure_axisY(domain=False, ticks=False))
-
-
-def _magnitude_bar(df, cat, val, title, highlight=None):
-    """Horizontal magnitude bars, direct value labels, headline bar highlighted."""
+# ----------------------------------------------------------------- charts
+def _magnitude_bar(df, cat, val, title, highlight=None, fmt="+%"):
+    """Horizontal magnitude bars with direct value labels. The accent marks one
+    bar and everything else is steel, so the eye lands where it should."""
     df = df.copy()
-    df["_c"] = [HILITE if (highlight and c == highlight) else MUTED for c in df[cat]]
-    df["_lbl"] = df[val].map(lambda v: f"{v:+.0%}")
+    df["_c"] = [HIVIS if (highlight and c == highlight) else STEEL for c in df[cat]]
+    df["_lbl"] = df[val].map(
+        lambda v: f"{v:+.0%}" if fmt == "+%" else f"{v:.2f}")
     pad = max(abs(df[val].max()), abs(df[val].min())) * 0.18 + 0.02
     base = alt.Chart(df).encode(
         y=alt.Y(f"{cat}:N", sort=None, title=None),
-        x=alt.X(f"{val}:Q", title=title, axis=alt.Axis(format="+%"),
+        x=alt.X(f"{val}:Q", title=title, axis=alt.Axis(format=fmt),
                 scale=alt.Scale(domain=[min(0, df[val].min()) - pad,
-                                        df[val].max() + pad])),
-    )
-    bars = base.mark_bar(height=20, cornerRadiusEnd=3).encode(
+                                        df[val].max() + pad])))
+    bars = base.mark_bar(height=20).encode(
         color=alt.Color("_c:N", scale=None, legend=None),
-        tooltip=[cat, alt.Tooltip(f"{val}:Q", format="+.1%")],
-    )
-    labels = base.mark_text(align="left", dx=5, fontSize=12, fontWeight=600,
-                            color="#334155").encode(text="_lbl:N")
-    return _style((bars + labels).properties(height=len(df) * 40 + 8))
+        tooltip=[cat, alt.Tooltip(f"{val}:Q", format=".2f")])
+    labels = base.mark_text(align="left", dx=6, fontSize=12,
+                            font="JetBrains Mono", color=INK).encode(text="_lbl:N")
+    return chart_style((bars + labels).properties(height=len(df) * 34 + 10))
 
 
-def _signed_bar(df, cat, val):
-    """Diverging signed-return bars (green up / red down), zero baseline."""
+def _signed_bar(df, cat, val, height=300):
+    """Signed returns. The sign is carried by the value label as well as by
+    hue, so the chart never relies on color alone."""
     df = df.copy()
     df["_c"] = [POS if v >= 0 else NEG for v in df[val]]
     base = alt.Chart(df).encode(
         x=alt.X(f"{cat}:N", sort="-y", title=None,
-                axis=alt.Axis(labelAngle=-40, labelLimit=160)),
-        y=alt.Y(f"{val}:Q", title="net return", axis=alt.Axis(format="+%")),
-    )
-    bars = base.mark_bar(width=14, cornerRadiusEnd=2, opacity=0.9).encode(
+                axis=alt.Axis(labelAngle=-40, labelLimit=170)),
+        y=alt.Y(f"{val}:Q", title="net return", axis=alt.Axis(format="+%")))
+    bars = base.mark_bar(width=13).encode(
         color=alt.Color("_c:N", scale=None, legend=None),
-        tooltip=[cat, alt.Tooltip(f"{val}:Q", format="+.1%")],
-    )
-    zero = alt.Chart(df).mark_rule(color="#cbd5e1", strokeWidth=1).encode(
-        y=alt.datum(0))
-    return _style((zero + bars).properties(height=300))
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "src"))
-
-from shared.configuration import Config                     # noqa: E402
-from shared.store import SnapshotStore                      # noqa: E402
-from system_a.event_study import run_event_study            # noqa: E402
-from system_a.rules import RulesTable                       # noqa: E402
-from system_a.spread_study import cross_spread_net, spread_stats  # noqa: E402
-
-st.set_page_config(page_title="System A — research dashboard", layout="wide")
+        tooltip=[cat, alt.Tooltip(f"{val}:Q", format="+.1%")])
+    zero = alt.Chart(df).mark_rule(color=STEEL, strokeWidth=1).encode(y=alt.datum(0))
+    return chart_style((zero + bars).properties(height=height))
 
 
-# ------------------------------------------------------------------ #
+# ------------------------------------------------------------------- data
 @st.cache_resource
 def load_config() -> Config:
     return Config.load(REPO_ROOT, system="system_a")
 
 
 def open_store(config: Config) -> SnapshotStore:
-    return SnapshotStore(
-        REPO_ROOT / config.require("data.snapshot_poller")["db_path"]
-    )
+    return SnapshotStore(REPO_ROOT / config.require("data.snapshot_poller")["db_path"])
 
 
 def live_source() -> str:
-    return load_config().get(
-        "data.snapshot_poller", {}).get("live_source", "buff")
+    return load_config().get("data.snapshot_poller", {}).get("live_source", "buff")
 
 
 @st.cache_data(ttl=60)
 def buff_frame() -> pd.DataFrame:
-    config = load_config()
-    store = open_store(config)
+    store = open_store(load_config())
     return pd.read_sql_query(
         "SELECT market_hash_name, ts, lowest_sell, highest_buy, listing_count,"
         " buy_order_count FROM snapshots WHERE source=? ORDER BY ts",
-        store.conn, params=(live_source(),),
-    )
+        store.conn, params=(live_source(),))
 
 
 @st.cache_data(ttl=300)
@@ -122,59 +116,55 @@ def study_results():
     store = open_store(config)
     rules = RulesTable.load(REPO_ROOT / config.require("system_a.rules_table_path"))
     seed = REPO_ROOT / config.require("data.steam_history")["items_file"]
-    universe = sorted(
-        {l.strip() for l in seed.read_text().splitlines() if l.strip()}
-    )
+    universe = sorted({l.strip() for l in seed.read_text().splitlines() if l.strip()})
     outcomes, scores, notes = run_event_study(
         rules, store, universe,
         lock_days=config.require("cooldown.trade_lock_days"),
         buff_fee_pct=config.require("costs.buff_fee_pct"),
         buff_fee_history=config.get("costs.fee_history", []),
-        steam_fee_pct=config.require("costs.steam_fee_pct"),
-    )
+        steam_fee_pct=config.require("costs.steam_fee_pct"))
     return rules, outcomes, scores, notes
 
 
-def fmt_ts(ts: float | None) -> str:
-    if ts is None:
-        return "—"
-    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+@st.cache_data(ttl=30)
+def watch_state() -> dict:
+    """State of the standing trade-up watch (system_a.watch).
+
+    The watch is the only thing standing between us and missing the roughly
+    10-day window, so its liveness is front-page information, not a footnote."""
+    alerts_path = REPO_ROOT / "var" / "alerts.jsonl"
+    seen_path = REPO_ROOT / "var" / "watch_seen.json"
+    alerts = []
+    if alerts_path.exists():
+        for line in alerts_path.read_text().splitlines():
+            if line.strip():
+                try:
+                    alerts.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    alerts.sort(key=lambda a: a.get("detected_at", 0), reverse=True)
+    return {"alerts": alerts,
+            "last_run": seen_path.stat().st_mtime if seen_path.exists() else None,
+            "ever_run": seen_path.exists()}
 
 
-# ------------------------------------------------------------------ #
-# STATUS BANNER — unmissable operating state on every page
-# ------------------------------------------------------------------ #
-config = load_config()
-gating = config.get("system_a.rules_gating", {}) or {}
-disabled_count = len(gating.get("disabled_rules", [])) + len(
-    gating.get("disabled_pairs", [])
-)
-paper = config.require("execution.paper_mode")
-all_directional_disabled = "weapon_balance_change" in gating.get("disabled_rules", [])
-mode = "LOG-ONLY" if all_directional_disabled else ("PAPER" if paper else "LIVE")
-banner_color = {"LOG-ONLY": "🟡", "PAPER": "🟠", "LIVE": "🔴"}[mode]
-st.markdown(
-    f"{banner_color} **{mode}** · $0 spent · {disabled_count} rules gated off · "
-    f"read-only · BUFF fee {config.require('costs.buff_fee_pct'):.1%} · "
-    f"T+{config.require('cooldown.trade_lock_days')} lock"
-)
-
-page = st.sidebar.radio(
-    "Section",
-    ["0 · Overview", "1 · Data health", "2 · Live market", "3 · Spread analysis",
-     "4 · Rule scorecard", "5 · Event timeline", "6 · Prediction log",
-     "7 · Trade-up class ★", "8 · Monopoly watch"],
-)
-frame = buff_frame()
+@st.cache_data(ttl=300)
+def lag_curve() -> dict | None:
+    """Entry-lag decay produced by `make lag-study`. Recomputing it scans about
+    20 archive zips and takes minutes, far too slow for a page load, so the
+    dashboard reads the artifact and shows its age. A stale curve is then
+    visible as stale rather than silently wrong."""
+    path = REPO_ROOT / "var" / "lag_decay.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text())
+    data["age_days"] = (time.time() - path.stat().st_mtime) / 86400
+    return data
 
 
 @st.cache_data(ttl=600)
 def concentration_ranking():
-    """Monopolization score per class from the latest iflow snapshot.
-    Returns (ranking rows, snapshot name, opened classes) or None."""
-    from system_a.concentration import (
-        _latest_snapshot, load_snapshot, rank_classes,
-    )
+    from system_a.concentration import _latest_snapshot, load_snapshot, rank_classes
     config = load_config()
     cache = REPO_ROOT / config.require("data.iflow_archive")["cache_dir"]
     snap = _latest_snapshot(cache)
@@ -187,25 +177,22 @@ def concentration_ranking():
 
 @st.cache_data(ttl=300)
 def trade_up_controls():
-    """Event vs time-placebo vs broad-market for the 2025-10-22 trade-up event,
-    from iflow BUFF data — the negative controls that made trade-up the one
-    surviving System A play. Returns None if iflow data isn't loaded."""
-    import statistics
+    """Event vs time-placebo for the 2025-10-22 trade-up event on iflow BUFF
+    data. These are the negative controls that made trade-up the one surviving
+    System A play. Returns None if iflow data is not loaded."""
     import random as _random
     config = load_config()
     store = open_store(config)
     if not store.counts_by_source().get("buff_iflow"):
         return None
     from system_a.collections import load_collection_map
-    from system_a.event_study import _bar_after, _event_ts, DAY
-    from system_a.spread_study import spread_stats
+    from system_a.event_study import DAY, _bar_after, _event_ts
     cmap = load_collection_map(REPO_ROOT / "config" / "trade_up_collections.yaml")
     seed = REPO_ROOT / config.require("data.steam_history")["items_file"]
     universe = sorted({l.strip() for l in seed.read_text().splitlines() if l.strip()})
     spreads = {s.item: s.median for s in spread_stats(store, source="buff_iflow")}
     med_spread = statistics.median(spreads.values()) if spreads else 0.04
-    ev = _event_ts("2025-10-22")
-    fee = 0.025
+    ev, fee = _event_ts("2025-10-22"), 0.025
 
     def held(series, ent, name):
         e = _bar_after(series, ent, max_delay_days=3.0)
@@ -235,347 +222,335 @@ def trade_up_controls():
             if pr is not None:
                 placebo.append(pr)
     med = lambda x: statistics.median(x) if x else None
-    return {
-        "n_reds": len(reds), "map_verified": cmap.verified,
-        "event_n": len(event), "event_med": med(event),
-        "placebo_n": len(placebo), "placebo_med": med(placebo),
-    }
+    return {"n_reds": len(reds), "event_n": len(event), "event_med": med(event),
+            "placebo_n": len(placebo), "placebo_med": med(placebo)}
 
 
-# ------------------------------------------------------------------ #
-if page == "0 · Overview":
-    st.header("Overview")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Balance-patch trading", "not viable", "edge < spread",
-              delta_color="inverse")
-    c2.metric("Trade-up events", "viable", "+164% median · durable")
-    c3.metric("Capital deployed", "$0", "paper / log-only")
+def fmt_ts(ts: float | None) -> str:
+    if ts is None:
+        return "never"
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def ago(ts: float | None) -> str:
+    if ts is None:
+        return "never"
+    mins = (time.time() - ts) / 60
+    if mins < 90:
+        return f"{mins:.0f} min ago"
+    if mins < 2880:
+        return f"{mins/60:.0f} h ago"
+    return f"{mins/1440:.0f} d ago"
+
+
+# ----------------------------------------------------------------- header
+config = load_config()
+frame = buff_frame()
+gating = config.get("system_a.gating", {}) or {}
+watch = watch_state()
+
+paper = config.require("execution.paper_mode")
+all_off = "weapon_balance_change" in gating.get("disabled_rules", [])
+mode = "LOG-ONLY" if all_off else ("PAPER" if paper else "LIVE")
+poller_alive = bool(subprocess.run(["pgrep", "-f", "system_a.runner --poll"],
+                                   capture_output=True, text=True).stdout.strip())
+watch_stale = watch["last_run"] is None or (time.time() - watch["last_run"]) > 86400
+
+st.markdown('<h1 class="masthead">CS2 event desk</h1>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="sub">One event class in this market has survived its negative '
+    'controls. This desk watches for the next one, and reports honestly on '
+    'everything that did not survive.</p>', unsafe_allow_html=True)
+
+st.markdown(
+    f'<div class="status">'
+    f'<span><span class="dot {"" if all_off else "dot--ok"}"></span>mode <b>{mode}</b></span>'
+    f'<span>spent <b>$0</b></span>'
+    f'<span><span class="dot {"dot--ok" if poller_alive else ""}"></span>'
+    f'price feed <b>{"running" if poller_alive else "stopped"}</b></span>'
+    f'<span><span class="dot {"" if watch_stale else "dot--ok"}"></span>'
+    f'event watch <b>{ago(watch["last_run"])}</b></span>'
+    f'<span>buff fee <b>{config.require("costs.buff_fee_pct"):.1%}</b></span>'
+    f'<span>lock <b>T+{config.require("cooldown.trade_lock_days")}</b></span>'
+    f'</div>', unsafe_allow_html=True)
+
+view = st.segmented_control(
+    "View", ["Now", "Timeline", "Outlook", "Evidence"],
+    default="Now", label_visibility="collapsed")
+
+# ============================================================== NOW
+if view == "Now":
+    alerts = watch["alerts"]
+    if alerts:
+        a = alerts[0]
+        st.markdown(
+            f'<div class="panel panel--alert"><h4>Trade-up event detected</h4>'
+            f'<p class="mono" style="font-size:12px;color:{MUTED}">'
+            f'{fmt_ts(a.get("posted_at"))} · {a.get("source", "")} · '
+            f'confidence {a.get("confidence", "")}</p>'
+            f'<p>{a.get("excerpt", "")[:300]}</p>'
+            f'<p class="label">Open the outlook view for the entry window</p>'
+            f'</div>', unsafe_allow_html=True)
+    elif not watch["ever_run"]:
+        st.warning("The event watch has never run, so nothing is looking for "
+                   "the next trade-up change. Start it with `make watch`, then "
+                   "put it on a cron schedule.")
+    elif watch_stale:
+        st.warning(f"The event watch last ran {ago(watch['last_run'])}. The "
+                   "window after an event is about 10 days, so a watch this "
+                   "stale can miss one. Re-run `make watch`.")
+    else:
+        st.markdown(
+            '<div class="panel"><h4>No event detected</h4>'
+            '<p>The watch is current and has seen nothing actionable. This is '
+            'the expected state almost all the time: this event class has '
+            'fired once, not weekly.</p></div>', unsafe_allow_html=True)
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    last_ts = frame.ts.max() if not frame.empty else None
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Alerts logged", len(alerts))
+    c2.metric("Last price snapshot", ago(last_ts))
+    c3.metric("Items tracked",
+              int(frame.market_hash_name.nunique()) if not frame.empty else 0)
+    c4.metric("Capital at risk", "$0", "log-only", delta_color="off")
+
+    if not poller_alive:
+        st.error("The price feed is not running, so the market series is going "
+                 "stale right now. Start it with `make poll`.")
+
+    if not frame.empty:
+        st.markdown('<p class="label">Live market</p>', unsafe_allow_html=True)
+        latest = (frame.sort_values("ts").groupby("market_hash_name").tail(1)
+                  .set_index("market_hash_name"))
+        show = latest[["lowest_sell", "highest_buy", "listing_count"]].copy()
+        show.columns = ["ask", "bid", "listings"]
+        if (show["bid"] > 0).any():
+            show["spread"] = (show["ask"] - show["bid"]) / show["ask"]
+        st.dataframe(show, use_container_width=True,
+                     column_config={"spread": st.column_config.NumberColumn(
+                         format="percent")})
+        st.caption(
+            "Live source is the Steam Market, free and keyless. Steam runs "
+            "roughly 30 to 40 percent above BUFF and carries no real bid, so "
+            "read it for liveness, not for BUFF trade economics."
+            if live_source() == "steam_live" else f"Live source: {live_source()}.")
+
+# ========================================================= TIMELINE
+elif view == "Timeline":
+    rules, outcomes, scores, notes = study_results()
+
+    st.markdown('<p class="label">Labelled events</p>', unsafe_allow_html=True)
+    rows = []
+    for e in rules.historical_events:
+        kind = e.get("type")
+        kind = ",".join(kind) if isinstance(kind, list) else str(kind)
+        rows.append({"date": str(e.get("date")), "type": kind,
+                     "trade-up class": "trade_up" in kind,
+                     "what changed": str(e.get("change", ""))[:130]})
+    ev_df = pd.DataFrame(rows).sort_values("date", ascending=False)
+    st.dataframe(ev_df.set_index("date"), use_container_width=True,
+                 column_config={"trade-up class":
+                                st.column_config.CheckboxColumn()})
+    st.caption(
+        "Eight labelled events, of which exactly one is a trade-up mechanic "
+        "change. That is why the timing of the next one cannot be predicted "
+        "from this history: one observation cannot fit or validate a model.")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown('<p class="label">Measured reaction, out of sample</p>',
+                unsafe_allow_html=True)
+    traded = pd.DataFrame([
+        {"label": f"{o.event_date}  {str(o.candidate.market_hash_name).split(' |')[0]}",
+         "net": o.net_pnl_pct}
+        for o in outcomes
+        if o.net_pnl_pct is not None and o.sample_class == "out_of_sample"])
+    if not traded.empty:
+        st.altair_chart(_signed_bar(traded, "label", "net"),
+                        use_container_width=True)
+        st.caption(
+            "Net return per balance-patch trade after costs. The picture is "
+            "the point: this is what a class that does not work looks like, "
+            "and it is why only the trade-up class is still live.")
+    else:
+        st.info("No scored outcomes yet. Load BUFF history with "
+                "`python -m shared.iflow_history`.")
+
+# ========================================================== OUTLOOK
+elif view == "Outlook":
+    st.markdown('<p class="label">If the watch fires, this is your window</p>',
+                unsafe_allow_html=True)
+    curve = lag_curve()
+    if curve is None:
+        st.info("Run `make lag-study` to compute the entry-lag decay curve.")
+    else:
+        cdf = pd.DataFrame(curve["curve"])
+        same = cdf.loc[cdf.lag == 0, "excess"]
+        week = cdf[(cdf.lag >= 1) & (cdf.lag <= 7)]["excess"]
+        late = cdf[cdf.lag >= 14]["excess"]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Acting same day", f"{same.iloc[0]:+.0%}" if len(same) else "n/a",
+                  "excess over market", delta_color="off")
+        c2.metric("Up to a week late", f"{week.median():+.0%}" if len(week) else "n/a",
+                  "still worth acting", delta_color="off")
+        c3.metric("Two weeks late", f"{late.median():+.0%}" if len(late) else "n/a",
+                  "the move is gone", delta_color="off")
+
+        line = alt.Chart(cdf).mark_line(color=INK, strokeWidth=2).encode(
+            x=alt.X("lag:Q", title="days after the announcement"),
+            y=alt.Y("excess:Q", title="excess over market",
+                    axis=alt.Axis(format="+%")))
+        pts = alt.Chart(cdf).mark_point(color=HIVIS, filled=True, size=70).encode(
+            x="lag:Q", y="excess:Q",
+            tooltip=[alt.Tooltip("lag:Q", title="days late"),
+                     alt.Tooltip("excess:Q", format="+.0%"),
+                     alt.Tooltip("n:Q", title="items measured")])
+        st.altair_chart(chart_style((line + pts).properties(height=290)),
+                        use_container_width=True)
+        st.caption(
+            f"Gold-case basket minus the rest of the market, {curve['hold_days']}-day "
+            f"hold, net of BUFF spread and a {curve['fee']:.1%} fee, measured on the "
+            f"{curve['event']} event. Curve computed {curve['age_days']:.0f} days ago.")
+
+        st.markdown(
+            '<div class="panel"><h4>What this does and does not say</h4>'
+            '<p>It says you do not need to predict the date, and you do not '
+            'need to beat bots to the trade. Arriving inside a week still '
+            'captured most of the excess, and a watch checking every few hours '
+            'is enough for that.</p>'
+            '<p>It does not say the next event will behave this way. This is '
+            'one event. Everything here rests on a single observation, and the '
+            'honest job of the watch is to produce a second one.</p></div>',
+            unsafe_allow_html=True)
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown('<p class="label">Where the next one might land</p>',
+                unsafe_allow_html=True)
+    rank = concentration_ranking()
+    if rank is None:
+        st.info("Load the BUFF archive with `python -m shared.iflow_history` "
+                "to rank item classes by monopolization.")
+    else:
+        ranking, snap_name, opened = rank
+        rdf = pd.DataFrame([{
+            "class": c.cls + ("  (already opened)" if c.cls in opened else ""),
+            "score": c.score} for c in ranking[:10]])
+        top = rdf.iloc[0]["class"] if not rdf.empty else None
+        st.altair_chart(
+            _magnitude_bar(rdf, "class", "score", "monopolization score, 0 to 1",
+                           highlight=top, fmt=".2f"),
+            use_container_width=True)
+        st.caption(
+            f"A high score means a high price barrier on thin supply, which is "
+            f"what knives looked like before they were opened. Snapshot "
+            f"{snap_name[:10]}. Treat this as a prior worth watching, not a "
+            f"forecast: no model has been validated against it.")
+
+# ========================================================= EVIDENCE
+elif view == "Evidence":
+    st.markdown('<p class="label">Why the trade-up class is believed</p>',
+                unsafe_allow_html=True)
     tu = trade_up_controls()
     if tu and tu["event_med"] is not None:
+        # Labels stay short: the axis truncates anything longer, and a bar
+        # whose label vanished is worse than no chart.
         chart_df = pd.DataFrame({
             "group": ["Trade-up event", "Random dates", "Broad market"],
-            "net": [tu["event_med"], tu["placebo_med"] or 0, -0.07],
-        })
+            "net": [tu["event_med"], tu["placebo_med"] or 0, -0.07]})
         st.altair_chart(
             _magnitude_bar(chart_df, "group", "net", "median 60-day net return",
                            highlight="Trade-up event"),
-            use_container_width=True,
-        )
-        st.caption("Median 60-day net return on BUFF (after spread + fee), "
-                   "2025-10-22 trade-up event vs. two controls.")
+            use_container_width=True)
+        st.caption(
+            "The middle bar is the control that matters: the same items on "
+            "random dates. If the event bar did not tower over it, the effect "
+            "would be nothing more than what these items always do.")
     else:
-        st.caption("Load iflow BUFF data (`python -m shared.iflow_history`) for "
-                   "the trade-up chart.")
+        st.info("Load BUFF history with `python -m shared.iflow_history` for "
+                "the control chart.")
 
-elif page == "1 · Data health":
-    st.header("Data health")
-    poller_ps = subprocess.run(
-        ["pgrep", "-f", "system_a.runner --poll"], capture_output=True, text=True
-    )
-    pid = poller_ps.stdout.split()[0] if poller_ps.stdout.strip() else None
-    last_ts = frame.ts.max() if not frame.empty else None
-    age_min = (time.time() - last_ts) / 60 if last_ts else None
-    refresh = config.require("data.refresh_seconds")
+    st.markdown(
+        '<div class="panel"><h4>What did not survive</h4>'
+        '<p><b>Balance-patch trading.</b> Out of sample it loses money after '
+        'BUFF costs, and passive limit entries do not rescue it.</p>'
+        '<p><b>Picking the right trade-up fuel.</b> Non-fuel items from the '
+        'same cases rose just as hard, so the effect is the whole gold-case '
+        'ladder repricing, not fuel selection.</p>'
+        '<p><b>System B, the positional engine.</b> Its ranker does have real '
+        'predictive power on live data, but a BUFF round trip costs about 6 '
+        'percent and the edge is smaller than the toll.</p></div>',
+        unsafe_allow_html=True)
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("launchd poller", f"alive (pid {pid})" if pid else "NOT RUNNING")
-    c2.metric("last snapshot", f"{age_min:.0f} min ago" if age_min else "never")
-    c3.metric("items tracked", frame.market_hash_name.nunique())
-    c4.metric("total snapshots", len(frame))
-    if not pid:
-        st.error("Poller process not found — the series is going stale RIGHT NOW. "
-                 "`launchctl print gui/$UID/com.leon.cs2quant.poller`")
-    if age_min is not None and age_min * 60 > 2.5 * refresh:
-        st.error(f"⚠ LAST SNAPSHOT IS {age_min:.0f} MINUTES OLD "
-                 f"(cadence {refresh//60} min) — the series has a live gap.")
+    st.markdown("<hr>", unsafe_allow_html=True)
 
-    st.caption(f"live source: **{live_source()}** "
-               f"({'Steam, free' if live_source() == 'steam_live' else 'BUFF'})")
-    store = open_store(config)
-    gaps = store.gap_report(live_source(), expected_seconds=refresh)
-    if gaps:
-        st.error(f"⚠ {len(gaps)} GAP(S) IN THE STORED SERIES — a holed series "
-                 "must not be trusted:")
-        st.dataframe(pd.DataFrame(
-            [(fmt_ts(a), fmt_ts(b), f"{s/3600:.1f}h") for a, b, s in gaps],
-            columns=["gap start", "gap end", "duration"],
-        ), use_container_width=True)
-    else:
-        st.success("No gaps > 2.5× cadence — series is continuous.")
-    if not frame.empty:
-        st.caption(f"coverage {fmt_ts(frame.ts.min())} → {fmt_ts(frame.ts.max())}")
-        per_item = frame.groupby("market_hash_name").size().rename("snapshots")
-        st.dataframe(per_item.to_frame(), use_container_width=True)
+    with st.expander("Rule scorecard, out of sample"):
+        rules, outcomes, scores, notes = study_results()
+        disabled = set(gating.get("disabled_rules", []))
+        disabled_pairs = set(gating.get("disabled_pairs", []))
 
-elif page == "2 · Live market":
-    src = live_source()
-    is_steam = src == "steam_live"
-    st.header("Live market" + (" · Steam (USD)" if is_steam else " · BUFF (CNY)"))
-    if is_steam:
-        st.caption("Live source: Steam Market (free, no key). Steam prices run "
-                   "~30–40% above BUFF and have no bid/ask spread — use for "
-                   "liveness, not BUFF trade economics.")
-    if frame.empty:
-        st.warning(f"no live data yet for source='{src}'")
-    else:
-        latest = frame.sort_values("ts").groupby("market_hash_name").last()
-        latest["age_min"] = (time.time() - latest.ts) / 60
-        refresh = config.require("data.refresh_seconds")
-        latest["stale"] = latest.age_min * 60 > 2.5 * refresh
-        if is_steam:
-            show = latest[["lowest_sell", "buy_order_count", "age_min", "stale"]]
-            show.columns = ["price $", "volume 24h", "age (min)", "STALE"]
-            st.dataframe(show.sort_values("price $", ascending=False),
-                         use_container_width=True)
-        else:
-            latest["spread_pct"] = (
-                (latest.lowest_sell - latest.highest_buy) / latest.lowest_sell)
-            show = latest[["lowest_sell", "highest_buy", "spread_pct",
-                           "listing_count", "buy_order_count", "age_min", "stale"]]
-            show.columns = ["ask ¥", "bid ¥", "spread", "listings", "bids",
-                            "age (min)", "STALE"]
-            st.dataframe(
-                show.sort_values("spread"), use_container_width=True,
-                column_config={"spread": st.column_config.NumberColumn(format="percent")})
-        if latest.stale.any():
-            st.error(f"⚠ {int(latest.stale.sum())} item(s) stale")
-        item = st.selectbox("history", sorted(frame.market_hash_name.unique()))
-        h = frame[frame.market_hash_name == item].set_index(
-            pd.to_datetime(frame[frame.market_hash_name == item].ts, unit="s"))
-        if is_steam:
-            st.line_chart(h[["lowest_sell"]].rename(columns={"lowest_sell": "price $"}))
-        else:
-            c1, c2 = st.columns(2)
-            c1.line_chart(h[["lowest_sell", "highest_buy"]])
-            c2.line_chart(h[["listing_count", "buy_order_count"]])
-
-elif page == "3 · Spread analysis":
-    st.header("Spreads · BUFF")
-    store = open_store(config)
-    # BUFF spreads come from iflow history (the live buff feed needs a real key;
-    # the free Steam live feed has no bid/ask). Fall back to live buff if present.
-    stats = spread_stats(store, source="buff_iflow") or spread_stats(store)
-    st.caption("BUFF bid/ask spreads from iflow history (Steam live feed has no "
-               "spread). This is the cost that made reactive trading unviable.")
-    if not stats:
-        st.warning("no poller data yet")
-    else:
-        fee = 0.025  # era fee for the studied OOS events (all pre-2026-04-14)
-        table = pd.DataFrame(
-            [{
-                "item": s.item, "n": s.n, "spread median": s.median,
-                "p25": s.p25, "p75": s.p75, "listings": s.median_listings,
-                "bids": s.median_bids,
-                "round-trip friction (spread + 2.5% fee)":
-                    -cross_spread_net(0.0, s.median, fee),
-            } for s in stats]
-        ).set_index("item")
-        medians = [s.median for s in stats]
-        c1, c2, c3 = st.columns(3)
-        c1.metric("median spread", f"{statistics.median(medians):.2%}")
-        c2.metric("range", f"{min(medians):.2%} – {max(medians):.2%}")
-        c3.metric("median round-trip friction",
-                  f"{-cross_spread_net(0.0, statistics.median(medians), fee):.2%}")
-        pct_cols = ["spread median", "p25", "p75",
-                    "round-trip friction (spread + 2.5% fee)"]
-        st.dataframe(
-            table.sort_values("spread median"), use_container_width=True,
-            column_config={c: st.column_config.NumberColumn(format="percent")
-                           for c in pct_cols},
-        )
-        st.subheader("Spread vs. liquidity")
-        scatter = pd.DataFrame(
-            [{"listings": s.median_listings, "spread": s.median,
-              "item": s.item.split(" (")[0]} for s in stats]
-        )
-        chart = alt.Chart(scatter).mark_circle(
-            size=90, color=HILITE, opacity=0.7, stroke="white", strokeWidth=1
-        ).encode(
-            x=alt.X("listings:Q", title="listing count (liquidity)",
-                    scale=alt.Scale(type="log")),
-            y=alt.Y("spread:Q", title="spread", axis=alt.Axis(format="%")),
-            tooltip=["item", alt.Tooltip("spread:Q", format=".1%"), "listings:Q"],
-        ).properties(height=340)
-        st.altair_chart(_style(chart), use_container_width=True)
-        st.caption("More liquid items (right) trade tighter — the relationship "
-                   "that makes reactive edges too small to clear costs.")
-
-elif page == "4 · Rule scorecard":
-    st.header("Rule scorecard")
-    rules, outcomes, scores, notes = study_results()
-    st.caption("Out-of-sample only; in-sample 2022-11-18 excluded.")
-    disabled = set(gating.get("disabled_rules", []))
-    disabled_pairs = set(gating.get("disabled_pairs", []))
-
-    def gate_status(rule: str) -> str:
-        if rule.startswith("substitute_pair:"):
-            pair = rule.split(":", 1)[1]
-            if pair in disabled_pairs or "weapon_balance_change" in disabled:
+        def gate_status(rule: str) -> str:
+            if rule.startswith("substitute_pair:"):
+                if (rule.split(":", 1)[1] in disabled_pairs
+                        or "weapon_balance_change" in disabled):
+                    return "DO-NOT-TRADE"
+            elif rule.split(".")[0] in disabled:
                 return "DO-NOT-TRADE"
-        elif rule.split(".")[0] in disabled:
-            return "DO-NOT-TRADE"
-        return "enabled"
+            return "enabled"
 
-    rows = []
-    for rule, s in sorted(scores.items()):
-        rows.append({
-            "rule": rule, "confidence (yaml)": s.confidence,
-            "events": len(s.events),
-            "hit-rate": f"{s.hits}/{s.scoreable}" if s.scoreable else "—",
-            "mean net (steam fee)": s.mean, "median": s.median,
-            "n": s.n, "verdict": s.verdict, "gating": gate_status(rule),
-        })
-    st.dataframe(
-        pd.DataFrame(rows).set_index("rule"), use_container_width=True,
-        column_config={c: st.column_config.NumberColumn(format="percent")
-                       for c in ["mean net (steam fee)", "median"]},
-    )
-    st.info("Headline verdicts: reactive first-order trading fails BUFF "
-            "frictions (OOS mean −1.7% BUFF-costed); anticipatory limits do "
-            "not fix it (best EV +0.2% pre-haircut). See git log for the "
-            "full study reports.")
-
-elif page == "5 · Event timeline":
-    st.header("Event timeline")
-    rules, outcomes, scores, notes = study_results()
-    rows = []
-    for o in outcomes:
-        rows.append({
-            "event": o.event_date,
-            "item": o.candidate.market_hash_name,
-            "rule": o.candidate.rule,
-            "sample": o.sample_class,
-            "predicted": o.candidate.direction.value,
-            "direction": ("HIT" if o.direction_hit else "miss")
-                         if o.direction_hit is not None else "no data",
-            "gross": o.gross_pct,
-            "net (steam fee)": o.net_pnl_pct,
-            "entry": fmt_ts(o.entry_ts)[:10] if o.entry_ts else "—",
-            "exit": fmt_ts(o.exit_ts)[:10] if o.exit_ts else "—",
-        })
-    traded = pd.DataFrame(
-        [r for r in rows if r["net (steam fee)"] is not None
-         and r["sample"] == "out_of_sample"]
-    )
-    if not traded.empty:
-        traded["label"] = traded["event"] + " · " + traded["item"].str.split(" |").str[0]
-        st.subheader("Out-of-sample net return per trade")
-        st.altair_chart(_signed_bar(traded, "label", "net (steam fee)"),
-                        use_container_width=True)
-        st.caption("Balance-patch trades net-of-cost, out-of-sample.")
-    st.dataframe(
-        pd.DataFrame(rows), use_container_width=True, height=420,
-        column_config={c: st.column_config.NumberColumn(format="percent")
-                       for c in ["gross", "net (steam fee)"]},
-    )
-    live = [e for e in rules.historical_events
-            if "ACTIVE" in str(e.get("status", ""))]
-    if live:
-        st.subheader("Live forward tests")
-        for event in live:
-            ts = datetime.strptime(str(event["date"]), "%Y-%m-%d").replace(
-                tzinfo=timezone.utc).timestamp()
-            st.caption(f"{event['date']} · tracking {(time.time()-ts)/86400:.0f} days")
-
-elif page == "6 · Prediction log":
-    st.header("Decision log")
-    provenance_path = REPO_ROOT / "var" / "provenance_a.jsonl"
-    if not provenance_path.exists():
-        st.warning("no provenance log yet (var/provenance_a.jsonl) — run a "
-                   "paper cycle or the demo")
-    else:
-        records = [json.loads(l) for l in
-                   provenance_path.read_text().splitlines() if l.strip()]
-        table = pd.DataFrame(records)
-        c1, c2, c3 = st.columns(3)
-        rule_filter = c1.multiselect("rule", sorted(table.rule.dropna().unique()))
-        item_filter = c2.multiselect("item", sorted(table["item"].dropna().unique()))
-        action_filter = c3.multiselect("action", sorted(table.action.unique()))
-        view = table
-        if rule_filter:
-            view = view[view.rule.isin(rule_filter)]
-        if item_filter:
-            view = view[view["item"].isin(item_filter)]
-        if action_filter:
-            view = view[view.action.isin(action_filter)]
-        st.caption(f"{len(view)} decisions (of {len(table)})")
-        st.dataframe(
-            view[["ts", "action", "item", "rule", "regime", "score"]],
-            use_container_width=True, height=380,
-        )
-        idx = st.number_input("inspect row (index)", min_value=0,
-                              max_value=max(len(view) - 1, 0), value=0)
-        if len(view):
-            st.json(view.iloc[int(idx)].to_dict())
-
-elif page == "7 · Trade-up class ★":
-    st.header("Trade-up class")
-    from system_a.collections import load_collection_map
-    cmap = load_collection_map(REPO_ROOT / "config" / "trade_up_collections.yaml")
-    tu = trade_up_controls()
-    if tu is None:
-        st.caption("No iflow BUFF data — run `python -m shared.iflow_history`.")
-    else:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Event (fuel reds)",
-                  f"{tu['event_med']:+.0%}" if tu['event_med'] is not None else "—",
-                  help=f"median 60d net, n={tu['event_n']}")
-        c2.metric("Random dates",
-                  f"{tu['placebo_med']:+.0%}" if tu['placebo_med'] is not None else "—",
-                  help=f"time placebo, n={tu['placebo_n']}")
-        c3.metric("Broad market", "−7%", help="all iflow items, same window")
-        chart_df = pd.DataFrame({
-            "group": ["Trade-up event", "Random dates", "Broad market"],
-            "net": [tu['event_med'], tu['placebo_med'] or 0, -0.07],
-        })
-        st.altair_chart(
-            _magnitude_bar(chart_df, "group", "net",
-                           "median 60-day net return (after BUFF frictions)",
-                           highlight="Trade-up event"),
+        st.dataframe(pd.DataFrame([
+            {"rule": r, "events": len(s.events),
+             "hit-rate": f"{s.hits}/{s.scoreable}" if s.scoreable else "n/a",
+             "mean net": s.mean, "median": s.median, "n": s.n,
+             "verdict": s.verdict, "gating": gate_status(r)}
+            for r, s in sorted(scores.items())]).set_index("rule"),
             use_container_width=True,
-        )
-        st.caption("2025-10-22 trade-up event, 60-day hold. Event vs. two "
-                   "controls (`python -m system_a.trade_up_control` for detail).")
-    st.divider()
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Gold-case coverts mapped", len(cmap.covert_to_case))
-    c2.metric("Map corroborated", "yes" if cmap.verified else "no")
-    paper = REPO_ROOT / "var" / "trade_up_paper.jsonl"
-    if paper.exists():
-        buys = sum(1 for l in paper.read_text().splitlines()
-                   if l.strip() and json.loads(l)["action"] == "buy_placed")
-        c3.metric("Last paper run — positions", buys, help="trade_up_paper.py")
+            column_config={c: st.column_config.NumberColumn(format="percent")
+                           for c in ["mean net", "median"]})
+        st.caption("In-sample events are excluded. The 2022-11-18 break that "
+                   "the rules were written from is quarantined out.")
 
-elif page == "8 · Monopoly watch":
-    st.header("Monopoly watch")
-    conc = concentration_ranking()
-    if conc is None:
-        st.caption("No iflow snapshots — run `python -m shared.iflow_history`.")
-    else:
-        ranking, snap_name, opened = conc
-        df = pd.DataFrame([{
-            "class": c.cls, "score": c.score, "med price $": c.median_price,
-            "med listings": c.median_listings, "n": c.n,
-            "status": "opened 2025-10-22" if c.cls in opened else "",
-        } for c in ranking])
-        st.altair_chart(
-            _magnitude_bar(
-                df.assign(label=df["class"] + df["status"].map(
-                    lambda s: "  (opened)" if s else "")),
-                "label", "score", "monopolization score (0–1)",
-                highlight=(df.iloc[0]["class"] + "  (opened)"
-                           if df.iloc[0]["class"] in opened else df.iloc[0]["class"])),
-            use_container_width=True,
-        )
-        st.caption(f"High price barrier + thin supply = monopolizable. "
-                   f"Snapshot {snap_name[:10]}. Higher = more like pre-access knives.")
-        st.dataframe(
-            df, use_container_width=True, hide_index=True,
-            column_config={"score": st.column_config.NumberColumn(format="%.2f"),
-                           "med price $": st.column_config.NumberColumn(format="$%.0f")},
-        )
-        cands = [c for c in ranking if c.cls not in opened]
-        if cands and ranking[0].score - cands[0].score > 0.2:
-            st.caption("Monopolization sits in classes already opened "
-                       "(knives/gloves). Remaining high-barrier targets "
-                       "(Contraband/discontinued trophies) are iflow's blind spot.")
+    with st.expander("What trading costs on BUFF"):
+        stats = spread_stats(open_store(config), source="buff_iflow")
+        if stats:
+            med = statistics.median([s.median for s in stats])
+            fee = config.require("costs.buff_fee_pct")
+            st.metric("Typical round trip", f"{med + fee:.1%}",
+                      f"{med:.1%} spread plus {fee:.1%} fee", delta_color="off")
+            st.dataframe(
+                pd.DataFrame([{"item": s.item, "median spread": s.median}
+                              for s in stats]).set_index("item"),
+                use_container_width=True,
+                column_config={"median spread": st.column_config.NumberColumn(
+                    format="percent")})
+            st.caption("This single number is what killed both the reactive "
+                       "engine and System B. Any edge smaller than it loses.")
+        else:
+            st.info("No BUFF spread data loaded.")
+
+    with st.expander("Data health"):
+        store = open_store(config)
+        gaps = store.gap_report(live_source(),
+                               expected_seconds=config.require("data.refresh_seconds"))
+        if gaps:
+            st.error(f"{len(gaps)} gap(s) in the stored series. A holed series "
+                     "must not be trusted.")
+            st.dataframe(pd.DataFrame(
+                [(fmt_ts(a), fmt_ts(b), f"{s/3600:.1f}h") for a, b, s in gaps],
+                columns=["gap start", "gap end", "duration"]),
+                use_container_width=True)
+        else:
+            st.success("No gaps beyond 2.5 times the cadence. The series is "
+                       "continuous.")
+        if not frame.empty:
+            st.caption(f"coverage {fmt_ts(frame.ts.min())} to "
+                       f"{fmt_ts(frame.ts.max())}")
+
+    with st.expander("Decision log"):
+        prov = REPO_ROOT / "var" / "provenance_a.jsonl"
+        if not prov.exists():
+            st.info("No decisions logged yet. `make demo` generates a sample run.")
+        else:
+            recs = [json.loads(l) for l in prov.read_text().splitlines() if l.strip()]
+            st.dataframe(pd.DataFrame(recs[-300:]), use_container_width=True)
+            st.caption(f"{len(recs)} decisions logged. Every one records which "
+                       f"signals fired and which rule decided.")
