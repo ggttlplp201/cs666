@@ -1,0 +1,167 @@
+item,category,verdict,presence,price_median,spread_median,vol_median,valid_median,listing_median,n_obs
+★ Driver Gloves | Racing Green (Field-Tested),glove,candidate,0.68,432.0,0.0262,16.0,3.0,84.5,562
+★ Hydra Gloves | Mangrove (Field-Tested),glove,candidate,0.669,428.49,0.0317,14.0,3.0,91.0,553
+★ Hydra Gloves | Rattler (Field-Tested),glove,candidate,0.674,428.99,0.0318,14.0,3.0,91.0,557
+★ Hydra Gloves | Emerald (Field-Tested),glove,candidate,0.69,480.0,0.0291,12.0,3.0,83.0,570
+★ Broken Fang Gloves | Needle Point (Field-Tested),glove,candidate,0.72,529.5,0.0312,11.0,3.0,82.0,595
+★ Broken Fang Gloves | Unhinged (Field-Tested),glove,candidate,0.685,600.0,0.0309,10.0,3.0,91.0,566
+★ Moto Gloves | Transport (Field-Tested),glove,candidate,0.662,561.99,0.0251,9.0,4.0,91.0,547
+★ Broken Fang Gloves | Yellow-banded (Field-Tested),glove,candidate,0.708,610.0,0.0285,9.0,3.0,91.0,585
+★ Hydra Gloves | Case Hardened (Field-Tested),glove,candidate,0.717,695.0,0.0272,9.0,4.0,91.0,592
+★ Driver Gloves | Overtake (Field-Tested),glove,candidate,0.724,664.75,0.0196,9.0,4.0,91.0,598
+★ Broken Fang Gloves | Jade (Field-Tested),glove,candidate,0.676,769.7,0.0234,8.0,4.0,91.0,558
+★ Sport Gloves | Bronze Morph (Field-Tested),glove,candidate,0.663,938.75,0.0172,7.0,5.0,91.0,548
+★ Moto Gloves | Turtle (Field-Tested),glove,candidate,0.654,885.0,0.0193,6.0,5.0,91.0,540
+★ Moto Gloves | Blood Pressure (Field-Tested),glove,candidate,0.689,1189.5,0.0291,6.0,3.0,91.0,569
+★ Moto Gloves | Polygon (Field-Tested),glove,candidate,0.753,1240.0,0.0268,6.0,4.0,91.0,622
+★ Driver Gloves | Black Tie (Field-Tested),glove,candidate,0.654,1425.0,0.0265,5.0,3.0,91.0,540
+★ Driver Gloves | Imperial Plaid (Field-Tested),glove,candidate,0.65,2146.0,0.0263,5.0,4.0,91.0,537
+★ Gut Knife | Doppler (Factory New),knife,candidate,0.831,1278.25,0.0265,10.0,4.0,91.0,686
+★ Shadow Daggers | Gamma Doppler (Factory New),knife,candidate,0.701,1239.49,0.0271,7.0,4.0,91.0,579
+★ Navaja Knife | Marble Fade (Factory New),knife,candidate,0.708,1083.99,0.0308,6.0,3.0,91.0,585
+★ Navaja Knife | Doppler (Factory New),knife,candidate,0.68,1293.935,0.0274,5.5,3.0,91.0,562
+★ Bowie Knife | Tiger Tooth (Factory New),knife,candidate,0.682,1625.0,0.0331,5.0,3.0,72.0,563
+M4A4 | Temukau (Field-Tested),mid_tier_primary,candidate,0.782,77.495,0.0143,188.0,8.0,91.0,646
+AK-47 | Asiimov (Field-Tested),mid_tier_primary,candidate,0.764,206.5,0.0204,126.0,9.0,91.0,631
+AK-47 | Neon Revolution (Field-Tested),mid_tier_primary,candidate,0.682,110.0,0.0186,109.0,6.0,91.0,563
+AK-47 | Redline (Field-Tested),mid_tier_primary,candidate,0.837,205.5,0.0141,109.0,9.0,91.0,691
+USP-S | Printstream (Field-Tested),mid_tier_primary,candidate,0.696,221.0,0.0228,107.0,9.0,91.0,575
+AWP | Chromatic Aberration (Minimal Wear),mid_tier_primary,candidate,0.867,68.615,0.0323,106.0,3.0,91.0,716
+AK-47 | Nightwish (Minimal Wear),mid_tier_primary,candidate,0.792,111.0,0.022,96.0,7.0,91.0,654
+AWP | Neo-Noir (Field-Tested),mid_tier_primary,candidate,0.799,154.0,0.0262,86.5,5.0,91.0,660
+AK-47 | Ice Coaled (Factory New),mid_tier_primary,candidate,0.797,102.0,0.0164,78.0,9.0,91.0,658
+M4A4 | The Emperor (Field-Tested),mid_tier_primary,candidate,0.728,81.0,0.0238,76.0,6.0,91.0,601
+M4A1-S | Player Two (Field-Tested),mid_tier_primary,candidate,0.743,148.5,0.0199,72.0,7.0,91.0,614
+AK-47 | Head Shot (Minimal Wear),mid_tier_primary,candidate,0.763,117.92500000000001,0.0256,71.0,5.0,91.0,630
+AK-47 | The Empress (Field-Tested),mid_tier_primary,candidate,0.708,244.99,0.0267,65.0,6.0,91.0,585
+M4A4 | Neo-Noir (Minimal Wear),mid_tier_primary,candidate,0.742,79.8,0.0329,65.0,4.0,91.0,613
+AWP | Neo-Noir (Minimal Wear),mid_tier_primary,candidate,0.814,182.5,0.0317,64.0,5.0,91.0,672
+AK-47 | Legion of Anubis (Factory New),mid_tier_primary,candidate,0.683,101.45,0.014,61.5,7.0,91.0,564
+USP-S | Neo-Noir (Field-Tested),mid_tier_primary,candidate,0.755,96.9,0.0221,55.0,5.0,91.0,624
+M4A1-S | Decimator (Minimal Wear),mid_tier_primary,candidate,0.755,129.5,0.0256,54.0,5.0,91.0,624
+M4A1-S | Hyper Beast (Field-Tested),mid_tier_primary,candidate,0.674,140.99,0.0211,54.0,5.0,91.0,557
+M4A4 | Temukau (Minimal Wear),mid_tier_primary,candidate,0.677,291.38,0.0286,47.0,6.0,91.0,559
+M4A1-S | Nightmare (Minimal Wear),mid_tier_primary,candidate,0.745,135.5,0.0288,44.0,3.0,91.0,615
+AWP | Neo-Noir (Factory New),mid_tier_primary,candidate,0.723,220.0,0.0194,42.0,9.0,91.0,597
+AK-47 | Point Disarray (Minimal Wear),mid_tier_primary,candidate,0.743,114.69,0.0285,42.0,4.0,91.0,614
+AK-47 | Asiimov (Minimal Wear),mid_tier_primary,candidate,0.741,405.0,0.018,42.0,10.0,91.0,612
+AK-47 | Neon Rider (Field-Tested),mid_tier_primary,candidate,0.734,297.65,0.022,41.0,6.0,91.0,606
+USP-S | Printstream (Minimal Wear),mid_tier_primary,candidate,0.655,397.5,0.0213,38.0,8.0,91.0,541
+AK-47 | Frontside Misty (Minimal Wear),mid_tier_primary,candidate,0.734,183.985,0.0205,36.0,5.0,91.0,606
+M4A1-S | Mecha Industries (Field-Tested),mid_tier_primary,candidate,0.659,187.895,0.0222,34.0,6.0,91.0,544
+M4A1-S | Chantico's Fire (Field-Tested),mid_tier_primary,candidate,0.703,188.0,0.0229,34.0,6.0,91.0,581
+AWP | Chromatic Aberration (Factory New),mid_tier_primary,candidate,0.695,111.0,0.0146,34.0,6.0,91.0,574
+M4A4 | 龍王 (Dragon King) (Minimal Wear),mid_tier_primary,candidate,0.689,83.4,0.0256,33.0,4.0,91.0,569
+USP-S | The Traitor (Minimal Wear),mid_tier_primary,candidate,0.751,131.825,0.0254,30.0,4.0,91.0,620
+AWP | Hyper Beast (Field-Tested),mid_tier_primary,candidate,0.757,186.0,0.0195,30.0,5.0,91.0,625
+AWP | Fever Dream (Factory New),mid_tier_primary,candidate,0.68,93.875,0.0348,30.0,3.0,91.0,562
+USP-S | Neo-Noir (Minimal Wear),mid_tier_primary,candidate,0.78,140.5,0.0257,27.0,4.0,91.0,644
+AWP | Wildfire (Field-Tested),mid_tier_primary,candidate,0.677,358.0,0.0228,27.0,7.0,91.0,559
+AK-47 | Aquamarine Revenge (Field-Tested),mid_tier_primary,candidate,0.711,248.0,0.0234,26.0,6.0,91.0,587
+Glock-18 | Bullet Queen (Minimal Wear),mid_tier_primary,candidate,0.781,82.88,0.0282,24.0,4.0,91.0,645
+AK-47 | Blue Laminate (Factory New),mid_tier_primary,candidate,0.685,89.67500000000001,0.0238,24.0,3.0,91.0,566
+AK-47 | Neon Revolution (Minimal Wear),mid_tier_primary,candidate,0.659,238.985,0.027,22.0,5.0,91.0,544
+AWP | Sun in Leo (Minimal Wear),mid_tier_primary,candidate,0.743,166.55,0.028,21.0,4.0,91.0,614
+AK-47 | The Empress (Minimal Wear),mid_tier_primary,candidate,0.689,422.0,0.0193,20.0,8.0,91.0,569
+AWP | Redline (Field-Tested),mid_tier_primary,candidate,0.654,290.0,0.0231,20.0,6.0,91.0,540
+AWP | Asiimov (Battle-Scarred),mid_tier_primary,candidate,0.657,515.0,0.0225,18.0,7.0,91.0,543
+M4A1-S | Player Two (Minimal Wear),mid_tier_primary,candidate,0.663,346.0,0.0258,17.0,6.0,91.0,548
+USP-S | Monster Mashup (Field-Tested),mid_tier_primary,candidate,0.65,156.98,0.0249,17.0,3.0,91.0,537
+AWP | Asiimov (Field-Tested),mid_tier_primary,candidate,0.776,880.0,0.015,15.0,9.0,91.0,641
+M4A1-S | Golden Coil (Field-Tested),mid_tier_primary,candidate,0.674,408.38,0.0258,14.0,5.0,91.0,557
+AWP | Wildfire (Minimal Wear),mid_tier_primary,candidate,0.728,557.0,0.0196,13.0,7.0,91.0,601
+AWP | Hyper Beast (Minimal Wear),mid_tier_primary,candidate,0.655,323.0,0.0186,13.0,6.0,91.0,541
+Glock-18 | Neo-Noir (Minimal Wear),mid_tier_primary,candidate,0.707,144.98000000000002,0.0241,13.0,4.0,91.0,584
+AK-47 | Bloodsport (Minimal Wear),mid_tier_primary,candidate,0.65,919.5,0.0221,12.0,6.0,91.0,537
+FAMAS | Commemoration (Factory New),mid_tier_primary,candidate,0.689,97.21,0.0213,11.0,3.0,91.0,569
+AK-47 | Neon Rider (Minimal Wear),mid_tier_primary,candidate,0.655,588.0,0.0201,11.0,6.0,91.0,541
+M4A1-S | Printstream (Field-Tested),mid_tier_primary,candidate,0.741,1335.7,0.0179,10.0,8.0,91.0,612
+AK-47 | Bloodsport (Factory New),mid_tier_primary,candidate,0.665,1008.0,0.0147,9.0,9.0,91.0,549
+AWP | Asiimov (Well-Worn),mid_tier_primary,candidate,0.751,637.25,0.0268,8.0,5.0,91.0,620
+Desert Eagle | Printstream (Field-Tested),small_item,candidate,0.76,217.0,0.0193,169.0,10.0,91.0,628
+Desert Eagle | Printstream (Minimal Wear),small_item,candidate,0.731,320.25,0.0213,70.0,10.0,91.0,604
+MP9 | Starlight Protector (Minimal Wear),small_item,candidate,0.793,41.5,0.0327,64.0,4.0,91.0,655
+Desert Eagle | Printstream (Battle-Scarred),small_item,candidate,0.668,179.0,0.0241,64.0,4.0,91.0,552
+Sir Bloody Silent Darryl | The Professionals,small_item,candidate,0.659,205.435,0.0312,47.0,4.0,91.0,544
+Desert Eagle | Kumicho Dragon (Field-Tested),small_item,candidate,0.712,114.495,0.0281,42.5,3.0,91.0,588
+Sir Bloody Skullhead Darryl | The Professionals,small_item,candidate,0.692,250.0,0.0335,38.0,3.0,91.0,572
+Desert Eagle | Code Red (Field-Tested),small_item,candidate,0.849,142.88,0.0234,33.0,5.0,91.0,701
+Sir Bloody Darryl Royale | The Professionals,small_item,candidate,0.654,295.0,0.0282,31.0,5.0,91.0,540
+Desert Eagle | Ocean Drive (Field-Tested),small_item,candidate,0.746,119.14,0.0132,25.0,6.0,91.0,616
+"Music Kit | Dren, Gunman Taco Truck",small_item,candidate,0.823,99.47,0.0345,19.0,4.0,91.0,680
+Desert Eagle | Kumicho Dragon (Minimal Wear),small_item,candidate,0.759,159.5,0.0309,18.0,3.0,91.0,627
+Cmdr. Frank 'Wet Sox' Baroud | SEAL Frogman,small_item,candidate,0.731,311.5,0.0301,17.0,4.0,91.0,604
+Desert Eagle | Printstream (Factory New),small_item,candidate,0.657,610.5,0.0107,15.0,10.0,91.0,543
+P90 | Asiimov (Minimal Wear),small_item,candidate,0.741,96.0,0.025,15.0,4.0,91.0,612
+MP9 | Starlight Protector (Factory New),small_item,candidate,0.742,102.5,0.03,13.0,3.0,91.0,613
+Desert Eagle | Code Red (Minimal Wear),small_item,candidate,0.677,219.0,0.0279,11.0,5.0,91.0,559
+Desert Eagle | Crimson Web (Minimal Wear),small_item,candidate,0.691,192.0,0.0269,10.0,3.0,91.0,571
+Glock-18 | Wasteland Rebel (Minimal Wear),mid_tier_primary,existing,0.72,24.97,0.0328,53.0,2.0,91.0,595
+M4A4 | In Living Color (Minimal Wear),mid_tier_primary,rejected,0.707,79.39500000000001,0.0385,38.0,2.0,91.0,584
+AK-47 | The Empress (Well-Worn),mid_tier_primary,rejected,0.688,191.75,0.0426,38.0,1.0,91.0,568
+AK-47 | Orbit Mk01 (Field-Tested),mid_tier_primary,rejected,0.667,107.5,0.0455,31.0,1.0,91.0,551
+AK-47 | Cartel (Minimal Wear),mid_tier_primary,rejected,0.738,95.69999999999999,0.0341,31.0,2.0,91.0,610
+AWP | Corticera (Minimal Wear),mid_tier_primary,rejected,0.717,100.75,0.029,21.0,2.5,91.0,592
+USP-S | Jawbreaker (Factory New),mid_tier_primary,rejected,0.653,139.0,0.0323,20.0,2.0,91.0,539
+AUG | Chameleon (Factory New),mid_tier_primary,rejected,0.702,29.09,0.0299,17.0,2.0,91.0,580
+FAMAS | Roll Cage (Minimal Wear),mid_tier_primary,rejected,0.755,30.49,0.0406,17.0,2.0,91.0,624
+AWP | Elite Build (Field-Tested),mid_tier_primary,rejected,0.665,109.8,0.038,16.0,2.0,91.0,549
+USP-S | Printstream (Well-Worn),mid_tier_primary,rejected,0.674,209.0,0.0462,11.0,1.0,91.0,557
+M4A1-S | Guardian (Minimal Wear),mid_tier_primary,rejected,0.723,153.98,0.0462,11.0,1.0,91.0,597
+Glock-18 | Ramese's Reach (Factory New),mid_tier_primary,rejected,0.668,92.995,0.0344,10.0,2.0,91.0,552
+AWP | Elite Build (Minimal Wear),mid_tier_primary,rejected,0.705,142.425,0.0348,9.0,2.0,91.0,582
+P250 | See Ya Later (Field-Tested),small_item,rejected,0.757,18.03,0.0318,97.0,3.0,91.0,625
+Zeus x27 | Olympus (Factory New),small_item,rejected,0.651,108.88499999999999,0.032,63.0,2.0,91.0,538
+MAC-10 | Neon Rider (Field-Tested),small_item,rejected,0.674,43.7,0.0377,53.0,2.0,91.0,557
+Trapper Aggressor | Guerrilla Warfare,small_item,rejected,0.653,80.5,0.0509,48.0,0.0,91.0,539
+StatTrak™ AK-47 | Slate (Minimal Wear),small_item,rejected,0.791,137.86,0.0324,35.0,3.0,91.0,653
+P250 | See Ya Later (Minimal Wear),small_item,rejected,0.801,32.655,0.0347,33.0,3.0,91.0,662
+MAC-10 | Neon Rider (Minimal Wear),small_item,rejected,0.762,50.0,0.0401,32.0,2.0,91.0,629
+StatTrak™ AK-47 | Ice Coaled (Minimal Wear),small_item,rejected,0.793,137.88,0.037,32.0,2.0,91.0,655
+SSG 08 | Dragonfire (Minimal Wear),small_item,rejected,0.694,92.49,0.0357,31.0,2.0,91.0,573
+StatTrak™ AK-47 | Legion of Anubis (Field-Tested),small_item,rejected,0.758,119.0,0.0405,30.0,1.0,91.0,626
+PP-Bizon | Judgement of Anubis (Field-Tested),small_item,rejected,0.724,26.005000000000003,0.0482,28.0,1.0,91.0,598
+StatTrak™ AWP | Chromatic Aberration (Field-Tested),small_item,rejected,0.671,114.47,0.0404,26.0,1.0,91.0,554
+StatTrak™ AWP | Atheris (Minimal Wear),small_item,rejected,0.786,107.44,0.0439,26.0,1.0,91.0,649
+StatTrak™ AK-47 | Nightwish (Field-Tested),small_item,rejected,0.809,134.0,0.0327,26.0,2.0,91.0,668
+Desert Eagle | Code Red (Well-Worn),small_item,rejected,0.656,113.74000000000001,0.0424,24.0,1.0,91.0,542
+Five-SeveN | Angry Mob (Minimal Wear),small_item,rejected,0.798,41.49,0.0404,23.0,2.0,91.0,659
+StatTrak™ MP9 | Starlight Protector (Field-Tested),small_item,rejected,0.808,50.0,0.0421,20.0,1.0,91.0,667
+StatTrak™ M4A1-S | Black Lotus (Minimal Wear),small_item,rejected,0.651,220.0,0.0411,20.0,1.0,91.0,538
+StatTrak™ M4A4 | Temukau (Field-Tested),small_item,rejected,0.745,166.5,0.0428,19.0,1.0,91.0,615
+StatTrak™ AK-47 | Nightwish (Well-Worn),small_item,rejected,0.762,104.89,0.0526,19.0,0.0,71.0,629
+StatTrak™ AK-47 | Head Shot (Field-Tested),small_item,rejected,0.788,149.5,0.0397,18.0,2.0,91.0,651
+StatTrak™ AK-47 | Legion of Anubis (Minimal Wear),small_item,rejected,0.797,189.895,0.0415,17.0,1.0,91.0,658
+StatTrak™ AK-47 | Phantom Disruptor (Minimal Wear),small_item,rejected,0.732,108.86,0.0488,17.0,1.0,91.0,605
+"StatTrak™ Music Kit | Knock2, dashstar*",small_item,rejected,0.786,138.5,0.0375,17.0,3.0,91.0,649
+R8 Revolver | Fade (Minimal Wear),small_item,rejected,0.753,58.0,-0.196,17.0,4.0,91.0,622
+MAC-10 | Neon Rider (Factory New),small_item,rejected,0.747,71.95,0.0334,16.0,2.0,91.0,617
+Desert Eagle | Printstream (Well-Worn),small_item,rejected,0.754,209.5,0.0471,16.0,1.0,91.0,623
+StatTrak™ M4A4 | Neo-Noir (Field-Tested),small_item,rejected,0.703,95.0,0.0478,15.0,1.0,91.0,581
+StatTrak™ M4A4 | Desolate Space (Field-Tested),small_item,rejected,0.714,92.315,0.0487,14.0,1.0,91.0,590
+StatTrak™ AK-47 | Head Shot (Well-Worn),small_item,rejected,0.661,112.65,0.0621,14.0,0.0,53.0,546
+PP-Bizon | Judgement of Anubis (Minimal Wear),small_item,rejected,0.754,34.98,0.0441,14.0,1.0,91.0,623
+StatTrak™ M4A1-S | Leaded Glass (Minimal Wear),small_item,rejected,0.729,109.49000000000001,0.05,13.0,0.0,91.0,602
+StatTrak™ XM1014 | Entombed (Factory New),small_item,rejected,0.685,99.03999999999999,0.051,13.0,0.0,91.0,566
+Desert Eagle | Night (Minimal Wear),small_item,rejected,0.742,101.0,0.0373,13.0,1.0,91.0,613
+StatTrak™ M4A4 | In Living Color (Field-Tested),small_item,rejected,0.651,79.1,0.0507,12.0,0.0,91.0,538
+StatTrak™ AWP | Mortis (Factory New),small_item,rejected,0.741,104.375,0.0417,12.0,1.0,91.0,612
+StatTrak™ AK-47 | Nightwish (Minimal Wear),small_item,rejected,0.726,278.995,0.0459,11.5,1.0,91.0,600
+StatTrak™ AWP | Chromatic Aberration (Minimal Wear),small_item,rejected,0.735,159.5,0.0504,10.0,0.0,91.0,607
+P250 | See Ya Later (Factory New),small_item,rejected,0.655,59.89,0.0362,10.0,2.0,91.0,541
+StatTrak™ AK-47 | Ice Coaled (Factory New),small_item,rejected,0.686,270.0,0.0391,10.0,2.0,91.0,567
+StatTrak™ AK-47 | Redline (Field-Tested),small_item,rejected,0.696,418.9,0.0286,10.0,3.0,91.0,575
+StatTrak™ AK-47 | Slate (Factory New),small_item,rejected,0.707,283.25,0.0398,10.0,2.0,91.0,584
+MAC-10 | Stalker (Field-Tested),small_item,rejected,0.811,84.81,0.0403,10.0,1.0,91.0,670
+StatTrak™ Glock-18 | Vogue (Factory New),small_item,rejected,0.7,131.45,0.0341,9.0,1.0,91.0,578
+StatTrak™ AK-47 | Head Shot (Minimal Wear),small_item,rejected,0.668,300.0,0.0454,8.0,1.0,91.0,552
+"StatTrak™ Music Kit | Dren, Gunman Taco Truck",small_item,rejected,0.674,161.87,0.0319,8.0,4.0,91.0,557
+StatTrak™ Desert Eagle | Light Rail (Factory New),small_item,rejected,0.657,98.8,0.0492,8.0,1.0,91.0,543
+R8 Revolver | Fade (Factory New),small_item,rejected,0.73,99.49,-0.6236,8.0,7.0,91.0,603
+PP-Bizon | Judgement of Anubis (Factory New),small_item,rejected,0.708,54.0,0.0388,8.0,2.0,91.0,585
+StatTrak™ Desert Eagle | Mecha Industries (Factory New),small_item,rejected,0.676,142.985,0.0358,8.0,2.0,91.0,558
+StatTrak™ AK-47 | Legion of Anubis (Factory New),small_item,rejected,0.678,349.495,0.0426,7.0,1.0,91.0,560
+StatTrak™ MP9 | Starlight Protector (Minimal Wear),small_item,rejected,0.729,118.15,0.0457,7.0,1.0,91.0,602
+StatTrak™ M4A4 | Spider Lily (Minimal Wear),small_item,rejected,0.677,104.0,0.0493,7.0,1.0,91.0,559
+StatTrak™ AWP | Duality (Factory New),small_item,rejected,0.722,173.835,0.0442,7.0,1.0,91.0,596
+StatTrak™ Glock-18 | Water Elemental (Minimal Wear),small_item,rejected,0.657,170.0,0.0458,7.0,1.0,91.0,543

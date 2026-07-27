@@ -1,0 +1,1048 @@
+# config/universe_b_draft.yaml — EXPANDED System B universe, DRAFT for human scoring
+#
+# Auto-screened 2026-07-27 from the iflow archive (NEW era 2024-02-13→2026-05-20,
+# 826 sampled snapshots; stats CSV: research/universe_screen_2026-07-27.csv).
+# Screen: presence ≥0.65 of sampled days, BUFF price_median ≥¥40, spread_median
+# ≤15%, Steam-24h-vol median ≥3 (PROXY — archive has no BUFF volume),
+# ≥3 bid-ladder entries within 5% of ask. StatTrak excluded (thin books);
+# negative-spread book-data anomalies excluded. Prices are CNY.
+#
+# ★ THIS IS A SKELETON, NOT A TRADABLE UNIVERSE ★  (HANDOFF §B: human inputs)
+# Every item still needs Builder 2 to fill:
+#   aesthetics     — 0..1 rank within weapon category (the human factor)
+#   supply         — 存世量 of the traded wear tier (0 = filters reject it!)
+#   case_price_cny — opening-cost proxy (≥80 gate)
+#   collection / source_status / rerelease_risk — verify per item
+# Until supply/case_price are filled, hard filters reject these items —
+# merging this file into universe_b.yaml unscored changes nothing.
+#
+# per-item comment: presence | median price ¥ | median spread | Steam vol | valid bids
+
+items:
+  # 0.68 | ¥432 | 2.6% | vol 16 | valid 3
+  - market_hash_name: "★ Driver Gloves | Racing Green (Field-Tested)"
+    weapon: Driver Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.67 | ¥428 | 3.2% | vol 14 | valid 3
+  - market_hash_name: "★ Hydra Gloves | Mangrove (Field-Tested)"
+    weapon: Hydra Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.67 | ¥429 | 3.2% | vol 14 | valid 3
+  - market_hash_name: "★ Hydra Gloves | Rattler (Field-Tested)"
+    weapon: Hydra Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥480 | 2.9% | vol 12 | valid 3
+  - market_hash_name: "★ Hydra Gloves | Emerald (Field-Tested)"
+    weapon: Hydra Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.72 | ¥530 | 3.1% | vol 11 | valid 3
+  - market_hash_name: "★ Broken Fang Gloves | Needle Point (Field-Tested)"
+    weapon: Broken Fang Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥600 | 3.1% | vol 10 | valid 3
+  - market_hash_name: "★ Broken Fang Gloves | Unhinged (Field-Tested)"
+    weapon: Broken Fang Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥562 | 2.5% | vol 9 | valid 4
+  - market_hash_name: "★ Moto Gloves | Transport (Field-Tested)"
+    weapon: Moto Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.71 | ¥610 | 2.9% | vol 9 | valid 3
+  - market_hash_name: "★ Broken Fang Gloves | Yellow-banded (Field-Tested)"
+    weapon: Broken Fang Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.72 | ¥695 | 2.7% | vol 9 | valid 4
+  - market_hash_name: "★ Hydra Gloves | Case Hardened (Field-Tested)"
+    weapon: Hydra Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.72 | ¥665 | 2.0% | vol 9 | valid 4
+  - market_hash_name: "★ Driver Gloves | Overtake (Field-Tested)"
+    weapon: Driver Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥770 | 2.3% | vol 8 | valid 4
+  - market_hash_name: "★ Broken Fang Gloves | Jade (Field-Tested)"
+    weapon: Broken Fang Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥939 | 1.7% | vol 7 | valid 5
+  - market_hash_name: "★ Sport Gloves | Bronze Morph (Field-Tested)"
+    weapon: Sport Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.65 | ¥885 | 1.9% | vol 6 | valid 5
+  - market_hash_name: "★ Moto Gloves | Turtle (Field-Tested)"
+    weapon: Moto Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥1190 | 2.9% | vol 6 | valid 3
+  - market_hash_name: "★ Moto Gloves | Blood Pressure (Field-Tested)"
+    weapon: Moto Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.75 | ¥1240 | 2.7% | vol 6 | valid 4
+  - market_hash_name: "★ Moto Gloves | Polygon (Field-Tested)"
+    weapon: Moto Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.65 | ¥1425 | 2.6% | vol 5 | valid 3
+  - market_hash_name: "★ Driver Gloves | Black Tie (Field-Tested)"
+    weapon: Driver Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.65 | ¥2146 | 2.6% | vol 5 | valid 4
+  - market_hash_name: "★ Driver Gloves | Imperial Plaid (Field-Tested)"
+    weapon: Driver Gloves
+    category: glove
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.83 | ¥1278 | 2.6% | vol 10 | valid 4
+  - market_hash_name: "★ Gut Knife | Doppler (Factory New)"
+    weapon: Gut Knife
+    category: knife
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.70 | ¥1239 | 2.7% | vol 7 | valid 4
+  - market_hash_name: "★ Shadow Daggers | Gamma Doppler (Factory New)"
+    weapon: Shadow Daggers
+    category: knife
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.71 | ¥1084 | 3.1% | vol 6 | valid 3
+  - market_hash_name: "★ Navaja Knife | Marble Fade (Factory New)"
+    weapon: Navaja Knife
+    category: knife
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥1294 | 2.7% | vol 6 | valid 3
+  - market_hash_name: "★ Navaja Knife | Doppler (Factory New)"
+    weapon: Navaja Knife
+    category: knife
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥1625 | 3.3% | vol 5 | valid 3
+  - market_hash_name: "★ Bowie Knife | Tiger Tooth (Factory New)"
+    weapon: Bowie Knife
+    category: knife
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.78 | ¥77 | 1.4% | vol 188 | valid 8
+  - market_hash_name: "M4A4 | Temukau (Field-Tested)"
+    weapon: M4A4
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.76 | ¥206 | 2.0% | vol 126 | valid 9
+  - market_hash_name: "AK-47 | Asiimov (Field-Tested)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥110 | 1.9% | vol 109 | valid 6
+  - market_hash_name: "AK-47 | Neon Revolution (Field-Tested)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.84 | ¥206 | 1.4% | vol 109 | valid 9
+  - market_hash_name: "AK-47 | Redline (Field-Tested)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.70 | ¥221 | 2.3% | vol 107 | valid 9
+  - market_hash_name: "USP-S | Printstream (Field-Tested)"
+    weapon: USP-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.87 | ¥69 | 3.2% | vol 106 | valid 3
+  - market_hash_name: "AWP | Chromatic Aberration (Minimal Wear)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.79 | ¥111 | 2.2% | vol 96 | valid 7
+  - market_hash_name: "AK-47 | Nightwish (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.80 | ¥154 | 2.6% | vol 86 | valid 5
+  - market_hash_name: "AWP | Neo-Noir (Field-Tested)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.80 | ¥102 | 1.6% | vol 78 | valid 9
+  - market_hash_name: "AK-47 | Ice Coaled (Factory New)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.73 | ¥81 | 2.4% | vol 76 | valid 6
+  - market_hash_name: "M4A4 | The Emperor (Field-Tested)"
+    weapon: M4A4
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥148 | 2.0% | vol 72 | valid 7
+  - market_hash_name: "M4A1-S | Player Two (Field-Tested)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.76 | ¥118 | 2.6% | vol 71 | valid 5
+  - market_hash_name: "AK-47 | Head Shot (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.71 | ¥245 | 2.7% | vol 65 | valid 6
+  - market_hash_name: "AK-47 | The Empress (Field-Tested)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥80 | 3.3% | vol 65 | valid 4
+  - market_hash_name: "M4A4 | Neo-Noir (Minimal Wear)"
+    weapon: M4A4
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.81 | ¥182 | 3.2% | vol 64 | valid 5
+  - market_hash_name: "AWP | Neo-Noir (Minimal Wear)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥101 | 1.4% | vol 62 | valid 7
+  - market_hash_name: "AK-47 | Legion of Anubis (Factory New)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.76 | ¥97 | 2.2% | vol 55 | valid 5
+  - market_hash_name: "USP-S | Neo-Noir (Field-Tested)"
+    weapon: USP-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.76 | ¥130 | 2.6% | vol 54 | valid 5
+  - market_hash_name: "M4A1-S | Decimator (Minimal Wear)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.67 | ¥141 | 2.1% | vol 54 | valid 5
+  - market_hash_name: "M4A1-S | Hyper Beast (Field-Tested)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥291 | 2.9% | vol 47 | valid 6
+  - market_hash_name: "M4A4 | Temukau (Minimal Wear)"
+    weapon: M4A4
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥136 | 2.9% | vol 44 | valid 3
+  - market_hash_name: "M4A1-S | Nightmare (Minimal Wear)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.72 | ¥220 | 1.9% | vol 42 | valid 9
+  - market_hash_name: "AWP | Neo-Noir (Factory New)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥115 | 2.9% | vol 42 | valid 4
+  - market_hash_name: "AK-47 | Point Disarray (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥405 | 1.8% | vol 42 | valid 10
+  - market_hash_name: "AK-47 | Asiimov (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.73 | ¥298 | 2.2% | vol 41 | valid 6
+  - market_hash_name: "AK-47 | Neon Rider (Field-Tested)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥398 | 2.1% | vol 38 | valid 8
+  - market_hash_name: "USP-S | Printstream (Minimal Wear)"
+    weapon: USP-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.73 | ¥184 | 2.1% | vol 36 | valid 5
+  - market_hash_name: "AK-47 | Frontside Misty (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥188 | 2.2% | vol 34 | valid 6
+  - market_hash_name: "M4A1-S | Mecha Industries (Field-Tested)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.70 | ¥188 | 2.3% | vol 34 | valid 6
+  - market_hash_name: "M4A1-S | Chantico's Fire (Field-Tested)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥111 | 1.5% | vol 34 | valid 6
+  - market_hash_name: "AWP | Chromatic Aberration (Factory New)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥83 | 2.6% | vol 33 | valid 4
+  - market_hash_name: "M4A4 | 龍王 (Dragon King) (Minimal Wear)"
+    weapon: M4A4
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.75 | ¥132 | 2.5% | vol 30 | valid 4
+  - market_hash_name: "USP-S | The Traitor (Minimal Wear)"
+    weapon: USP-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.76 | ¥186 | 1.9% | vol 30 | valid 5
+  - market_hash_name: "AWP | Hyper Beast (Field-Tested)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥94 | 3.5% | vol 30 | valid 3
+  - market_hash_name: "AWP | Fever Dream (Factory New)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.78 | ¥140 | 2.6% | vol 27 | valid 4
+  - market_hash_name: "USP-S | Neo-Noir (Minimal Wear)"
+    weapon: USP-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥358 | 2.3% | vol 27 | valid 7
+  - market_hash_name: "AWP | Wildfire (Field-Tested)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.71 | ¥248 | 2.3% | vol 26 | valid 6
+  - market_hash_name: "AK-47 | Aquamarine Revenge (Field-Tested)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.78 | ¥83 | 2.8% | vol 24 | valid 4
+  - market_hash_name: "Glock-18 | Bullet Queen (Minimal Wear)"
+    weapon: Glock-18
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥90 | 2.4% | vol 24 | valid 3
+  - market_hash_name: "AK-47 | Blue Laminate (Factory New)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥239 | 2.7% | vol 22 | valid 5
+  - market_hash_name: "AK-47 | Neon Revolution (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥167 | 2.8% | vol 21 | valid 4
+  - market_hash_name: "AWP | Sun in Leo (Minimal Wear)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥422 | 1.9% | vol 20 | valid 8
+  - market_hash_name: "AK-47 | The Empress (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.65 | ¥290 | 2.3% | vol 20 | valid 6
+  - market_hash_name: "AWP | Redline (Field-Tested)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥515 | 2.2% | vol 18 | valid 7
+  - market_hash_name: "AWP | Asiimov (Battle-Scarred)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥346 | 2.6% | vol 17 | valid 6
+  - market_hash_name: "M4A1-S | Player Two (Minimal Wear)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.65 | ¥157 | 2.5% | vol 17 | valid 3
+  - market_hash_name: "USP-S | Monster Mashup (Field-Tested)"
+    weapon: USP-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.78 | ¥880 | 1.5% | vol 15 | valid 9
+  - market_hash_name: "AWP | Asiimov (Field-Tested)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.67 | ¥408 | 2.6% | vol 14 | valid 5
+  - market_hash_name: "M4A1-S | Golden Coil (Field-Tested)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.73 | ¥557 | 2.0% | vol 13 | valid 7
+  - market_hash_name: "AWP | Wildfire (Minimal Wear)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥323 | 1.9% | vol 13 | valid 6
+  - market_hash_name: "AWP | Hyper Beast (Minimal Wear)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.71 | ¥145 | 2.4% | vol 13 | valid 4
+  - market_hash_name: "Glock-18 | Neo-Noir (Minimal Wear)"
+    weapon: Glock-18
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.65 | ¥920 | 2.2% | vol 12 | valid 6
+  - market_hash_name: "AK-47 | Bloodsport (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥97 | 2.1% | vol 11 | valid 3
+  - market_hash_name: "FAMAS | Commemoration (Factory New)"
+    weapon: FAMAS
+    category: mid_tier_primary
+    is_secondary_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥588 | 2.0% | vol 11 | valid 6
+  - market_hash_name: "AK-47 | Neon Rider (Minimal Wear)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥1336 | 1.8% | vol 10 | valid 8
+  - market_hash_name: "M4A1-S | Printstream (Field-Tested)"
+    weapon: M4A1-S
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.67 | ¥1008 | 1.5% | vol 9 | valid 9
+  - market_hash_name: "AK-47 | Bloodsport (Factory New)"
+    weapon: AK-47
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.75 | ¥637 | 2.7% | vol 8 | valid 5
+  - market_hash_name: "AWP | Asiimov (Well-Worn)"
+    weapon: AWP
+    category: mid_tier_primary
+    is_primary: true
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.76 | ¥217 | 1.9% | vol 169 | valid 10
+  - market_hash_name: "Desert Eagle | Printstream (Field-Tested)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.73 | ¥320 | 2.1% | vol 70 | valid 10
+  - market_hash_name: "Desert Eagle | Printstream (Minimal Wear)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.79 | ¥42 | 3.3% | vol 64 | valid 4
+  - market_hash_name: "MP9 | Starlight Protector (Minimal Wear)"
+    weapon: MP9
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.67 | ¥179 | 2.4% | vol 64 | valid 4
+  - market_hash_name: "Desert Eagle | Printstream (Battle-Scarred)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥205 | 3.1% | vol 47 | valid 4
+  - market_hash_name: "Sir Bloody Silent Darryl | The Professionals"
+    weapon: Sir Bloody Silent Darryl
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.71 | ¥114 | 2.8% | vol 42 | valid 3
+  - market_hash_name: "Desert Eagle | Kumicho Dragon (Field-Tested)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥250 | 3.4% | vol 38 | valid 3
+  - market_hash_name: "Sir Bloody Skullhead Darryl | The Professionals"
+    weapon: Sir Bloody Skullhead Darryl
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.85 | ¥143 | 2.3% | vol 33 | valid 5
+  - market_hash_name: "Desert Eagle | Code Red (Field-Tested)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.65 | ¥295 | 2.8% | vol 31 | valid 5
+  - market_hash_name: "Sir Bloody Darryl Royale | The Professionals"
+    weapon: Sir Bloody Darryl Royale
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.75 | ¥119 | 1.3% | vol 25 | valid 6
+  - market_hash_name: "Desert Eagle | Ocean Drive (Field-Tested)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.82 | ¥99 | 3.5% | vol 19 | valid 4
+  - market_hash_name: "Music Kit | Dren, Gunman Taco Truck"
+    weapon: Music Kit
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.76 | ¥160 | 3.1% | vol 18 | valid 3
+  - market_hash_name: "Desert Eagle | Kumicho Dragon (Minimal Wear)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.73 | ¥312 | 3.0% | vol 17 | valid 4
+  - market_hash_name: "Cmdr. Frank 'Wet Sox' Baroud | SEAL Frogman"
+    weapon: Cmdr. Frank 'Wet Sox' Baroud
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.66 | ¥610 | 1.1% | vol 15 | valid 10
+  - market_hash_name: "Desert Eagle | Printstream (Factory New)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥96 | 2.5% | vol 15 | valid 4
+  - market_hash_name: "P90 | Asiimov (Minimal Wear)"
+    weapon: P90
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.74 | ¥102 | 3.0% | vol 13 | valid 3
+  - market_hash_name: "MP9 | Starlight Protector (Factory New)"
+    weapon: MP9
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.68 | ¥219 | 2.8% | vol 11 | valid 5
+  - market_hash_name: "Desert Eagle | Code Red (Minimal Wear)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
+  # 0.69 | ¥192 | 2.7% | vol 10 | valid 3
+  - market_hash_name: "Desert Eagle | Crimson Web (Minimal Wear)"
+    weapon: Desert Eagle
+    category: small_item
+    collection: ""              # TODO
+    source_status: active       # TODO verify (active|retired|discontinued)
+    rerelease_risk: 0.0         # TODO
+    case_price_cny: 0           # TODO (≥80 gate)
+    supply: 0                   # TODO 存世量 — 0 = item stays filtered
+    aesthetics: 0.5             # TODO human score
