@@ -162,6 +162,18 @@ def lag_curve() -> dict | None:
     return data
 
 
+@st.cache_data(ttl=120)
+def paper_desk() -> dict | None:
+    """Result of the paper desk (system_a.paper_desk), which trades only on
+    events that actually happened. Produced by `make desk`."""
+    path = REPO_ROOT / "var" / "paper_desk.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text())
+    data["age_days"] = (time.time() - path.stat().st_mtime) / 86400
+    return data
+
+
 @st.cache_data(ttl=600)
 def concentration_ranking():
     from system_a.concentration import _latest_snapshot, load_snapshot, rank_classes
@@ -275,7 +287,7 @@ st.markdown(
     f'</div>', unsafe_allow_html=True)
 
 view = st.segmented_control(
-    "View", ["Now", "Timeline", "Outlook", "Evidence"],
+    "View", ["Now", "Simulation", "Timeline", "Outlook", "Evidence"],
     default="Now", label_visibility="collapsed")
 
 # ============================================================== NOW
@@ -335,6 +347,77 @@ if view == "Now":
             "roughly 30 to 40 percent above BUFF and carries no real bid, so "
             "read it for liveness, not for BUFF trade economics."
             if live_source() == "steam_live" else f"Live source: {live_source()}.")
+
+# ======================================================= SIMULATION
+elif view == "Simulation":
+    desk = paper_desk()
+    if desk is None:
+        st.info("Run `make desk` to trade the paper book on real detected events.")
+    elif desk.get("status") == "no_events":
+        st.markdown(
+            '<div class="panel"><h4>Holding cash</h4>'
+            '<p>No trade-up event has been detected, and none is labelled, so '
+            'the desk has not traded. It will not invent a signal in order to '
+            'have something to show.</p></div>', unsafe_allow_html=True)
+    elif desk.get("status") == "no_market_data":
+        st.warning("Events exist but no BUFF market data covers their windows. "
+                   "Load history with `python -m shared.iflow_history`.")
+    else:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Paper book", f"{desk['capital']:,.0f} CNY")
+        c2.metric("Total P&L", f"{desk['total_pnl']:+,.0f} CNY",
+                  f"{desk['return_pct']:+.1%} on capital", delta_color="off")
+        c3.metric("Positions opened", desk["positions_opened"])
+        c4.metric("Events traded", len(desk["events"]))
+
+        eq = pd.DataFrame(desk["equity"])
+        eq["day"] = pd.to_datetime(eq["day"])
+        line = alt.Chart(eq).mark_line(color=INK, strokeWidth=2).encode(
+            x=alt.X("day:T", title=None),
+            y=alt.Y("equity:Q", title="book value, CNY",
+                    scale=alt.Scale(zero=False)),
+            tooltip=[alt.Tooltip("day:T"), alt.Tooltip("equity:Q", format=",.0f"),
+                     alt.Tooltip("open_lots:Q", title="open lots")])
+        marks = pd.DataFrame([{"day": pd.to_datetime(e["day"]),
+                               "label": e["origin"]} for e in desk["events"]])
+        rules_layer = alt.Chart(marks).mark_rule(
+            color=HIVIS, strokeWidth=2).encode(x="day:T",
+                                               tooltip=["label:N"])
+        st.altair_chart(chart_style((line + rules_layer).properties(height=300)),
+                        use_container_width=True)
+        st.caption(
+            f"Paper book over {desk['days']} days, {desk['start']} to "
+            f"{desk['end']}. The marked line is the real event the desk traded. "
+            f"Prices are real BUFF, costs are the measured spread plus a "
+            f"{desk['fee_pct']:.1%} fee, with a T+{desk['lock_days']} lock. "
+            f"Run {desk['age_days']:.0f} days ago.")
+
+        st.markdown('<p class="label">Events it traded, and where they came from</p>',
+                    unsafe_allow_html=True)
+        st.dataframe(
+            pd.DataFrame([{"date": e["day"], "source": e["origin"],
+                           "what happened": e["detail"]} for e in desk["events"]]
+                         ).set_index("date"), use_container_width=True)
+
+        st.markdown(
+            '<div class="panel panel--alert"><h4>Read this before trusting the number</h4>'
+            '<p>The rules this desk trades on, and the gold-case map it uses to '
+            'pick items, were written after studying this exact event. The '
+            'result is therefore <b>in-sample</b>: it shows the machine '
+            'executing correctly on the event it was built around, which is not '
+            'the same as evidence that it will work on the next one.</p>'
+            '<p>There has been one event. A single trade is not a track record, '
+            'however good the number looks. The genuine out-of-sample test is '
+            'the next detection, which is the entire reason the watch runs.</p>'
+            '</div>', unsafe_allow_html=True)
+
+        if desk.get("trades"):
+            with st.expander("Trade blotter"):
+                st.dataframe(pd.DataFrame(desk["trades"]),
+                             use_container_width=True, hide_index=True)
+        if desk.get("decisions"):
+            st.caption("Engine decisions: " + ", ".join(
+                f"{k} {v}" for k, v in sorted(desk["decisions"].items())))
 
 # ========================================================= TIMELINE
 elif view == "Timeline":
