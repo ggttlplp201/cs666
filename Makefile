@@ -5,7 +5,7 @@ B := $(CURDIR)/system_b
 
 .PHONY: test test-a test-b \
         demo dashboard poll gap-check event-study spread-study exit-study \
-        b-panel b-backtest b-backtest-real b-dashboard lag-study watch desk
+        b-panel b-backtest b-backtest-real b-dashboard lag-study watch desk b-live
 
 # ---------------------------------------------------------------- tests
 test:                 ## both systems
@@ -57,6 +57,9 @@ b-backtest:           ## walk-forward on the synthetic simulator
 
 b-backtest-real:      ## walk-forward on the real BUFF panel
 	cd "$(B)" && PYTHONPATH=src "$(PY)" -m system_b.run_backtest --data-dir var/panel_real
+
+b-live:               ## one System B forward paper cycle on the live feed
+	cd "$(B)" && PYTHONPATH=src "$(PY)" -m system_b.live_paper
 
 b-dashboard:          ## React run-artifact dashboard (needs bun/npm)
 	cd "$(B)/dashboard" && bun install && bun run dev

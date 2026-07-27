@@ -174,6 +174,22 @@ def paper_desk() -> dict | None:
     return data
 
 
+@st.cache_data(ttl=60)
+def live_sim() -> dict | None:
+    """System B's forward paper run (system_b.live_paper), read as a plain
+    artifact. Only the JSON is read, never System B's code, so the two systems
+    stay independent."""
+    path = REPO_ROOT.parent / "system_b" / "var" / "live_paper.json"
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return None
+    data["age_min"] = (time.time() - path.stat().st_mtime) / 60
+    return data
+
+
 @st.cache_data(ttl=600)
 def concentration_ranking():
     from system_a.concentration import _latest_snapshot, load_snapshot, rank_classes
@@ -418,6 +434,66 @@ elif view == "Simulation":
         if desk.get("decisions"):
             st.caption("Engine decisions: " + ", ".join(
                 f"{k} {v}" for k, v in sorted(desk["decisions"].items())))
+
+    # ---- System B forward run, still accumulating ------------------------
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown('<p class="label">System B, trading live and forward</p>',
+                unsafe_allow_html=True)
+    sim = live_sim()
+    if sim is None:
+        st.info("No forward run yet. Start it with `make b-live`.")
+    else:
+        cycles = sim.get("cycles", [])
+        cap = float(sim.get("capital", 0) or 0)
+        eq = cycles[-1]["equity"] if cycles else cap
+        stale = sim["age_min"] > 60 * 12
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Book", f"{cap:,.0f} CNY")
+        c2.metric("Value now", f"{eq:,.0f} CNY",
+                  f"{(eq/cap - 1):+.2%}" if cap else "", delta_color="off")
+        c3.metric("Days running", len(cycles))
+        c4.metric("Last cycle", f"{sim['age_min']:.0f} min ago")
+        if stale:
+            st.warning("The forward run has not cycled in over 12 hours. Check "
+                       "`launchctl list | grep livepaper`.")
+
+        if len(cycles) > 1:
+            cdf = pd.DataFrame(cycles)
+            cdf["day"] = pd.to_datetime(cdf["day"])
+            st.altair_chart(chart_style(alt.Chart(cdf).mark_line(
+                color=INK, strokeWidth=2).encode(
+                x=alt.X("day:T", title=None),
+                y=alt.Y("equity:Q", title="book value, CNY",
+                        scale=alt.Scale(zero=False)),
+                tooltip=[alt.Tooltip("day:T"),
+                         alt.Tooltip("equity:Q", format=",.0f"),
+                         alt.Tooltip("open_lots:Q", title="open lots")]
+            ).properties(height=240)), use_container_width=True)
+        else:
+            st.caption("One cycle so far. The curve appears once there are two.")
+
+        st.markdown(
+            f'<div class="panel"><h4>What this run can and cannot show</h4>'
+            f'<p>It trades forward on the live feed, so every decision is made '
+            f'on data that did not exist when the previous one ran. That makes '
+            f'it a genuine out-of-sample record, which nothing else here is.</p>'
+            f'<p>But the venue is <b>Steam, not BUFF</b>, because Steam is the '
+            f'only live feed available. Steam charges about '
+            f'{float(sim.get("fee", 0)):.1%} to sell against BUFF\'s 1.5%, and '
+            f'the measured edge is near 3% over 21 days. <b>A loss is the base '
+            f'case</b>, and it would not by itself condemn the strategy. The '
+            f'question worth watching is whether the ranker picks winners at '
+            f'all, not whether it clears a 13% toll.</p>'
+            f'<p>The feed also carries no bid or depth, so the structural half '
+            f'of the selection thesis is switched off here.</p></div>',
+            unsafe_allow_html=True)
+
+        if sim.get("fills"):
+            with st.expander(f"Fills ({len(sim['fills'])})"):
+                st.dataframe(pd.DataFrame(sim["fills"]),
+                             use_container_width=True, hide_index=True)
+        if sim.get("pending"):
+            st.caption(f"{len(sim['pending'])} order(s) resting on the book.")
 
 # ========================================================= TIMELINE
 elif view == "Timeline":
