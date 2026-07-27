@@ -105,6 +105,48 @@ def load_live_panel(db_path: Path, source: str = LIVE_SOURCE,
     return MarketPanel(frames=frames, meta=derive_meta(list(frames)))
 
 
+def build_blotter(ledger: Ledger, marks: dict[str, float], fee: float) -> dict:
+    """What is held, what was closed, and what each is worth right now.
+
+    The cycle log alone only says how many orders moved, which is useless for
+    judging a run: you cannot tell a position that doubled from one that
+    halved. Open lots are marked at the current price NET of the sell fee,
+    because that is what the position is actually worth to us today, not the
+    headline quote."""
+    open_rows, closed_rows = [], []
+    for lot in ledger.lots:
+        cost = lot.qty * lot.buy_price
+        if lot.open:
+            mark = marks.get(lot.item)
+            if mark is None:
+                continue
+            value = lot.qty * mark * (1 - fee)
+            open_rows.append({
+                "item": lot.item, "qty": lot.qty,
+                "buy_price": round(lot.buy_price, 4),
+                "current_price": round(mark, 4),
+                "cost": round(cost, 2), "value_now": round(value, 2),
+                "delta_cny": round(value - cost, 2),
+                "delta_pct": (value / cost - 1) if cost else 0.0,
+                "bought": str(lot.buy_day),
+                "held_days": (date.today() - lot.buy_day).days,
+                "unlocks": str(lot.unlock_day),
+            })
+        else:
+            proceeds = lot.qty * (lot.sell_price or 0.0) - lot.sell_fee
+            closed_rows.append({
+                "item": lot.item, "qty": lot.qty,
+                "buy_price": round(lot.buy_price, 4),
+                "sell_price": round(lot.sell_price or 0.0, 4),
+                "cost": round(cost, 2), "proceeds": round(proceeds, 2),
+                "pnl_cny": round(proceeds - cost, 2),
+                "pnl_pct": (proceeds / cost - 1) if cost else 0.0,
+                "bought": str(lot.buy_day), "sold": str(lot.sell_day),
+                "exit_reason": lot.exit_reason,
+            })
+    return {"open": open_rows, "closed": closed_rows}
+
+
 def _anchor_history(g: pd.DataFrame, history_source: str, live_source: str) -> pd.Series:
     """Put archived prices into the LIVE series' units, per item.
 
@@ -281,6 +323,8 @@ def run_cycle(db_path: Path, capital: float = DEFAULT_CAPITAL,
     state["fills"] = state.get("fills", []) + [
         {"day": str(day.date()), "item": f.order.item, "side": f.order.side.value,
          "qty": f.qty, "price": f.fill_price} for f in fills]
+    blotter = build_blotter(ledger, marks, fee)
+    state["blotter"] = blotter
     state["pending"] = [order_to_dict(o) for o in broker.pending]
     state["ledger"] = ledger.to_dict()
     state["started"] = state.get("started") or str(day.date())
@@ -293,6 +337,10 @@ def run_cycle(db_path: Path, capital: float = DEFAULT_CAPITAL,
     row["status"] = "ran"
     row["total_return"] = equity / capital - 1
     row["days_running"] = len(state["cycles"])
+    row["blotter"] = blotter
+    row["today_fills"] = [
+        {"item": f.order.item, "side": f.order.side.value, "qty": f.qty,
+         "price": round(f.fill_price, 4)} for f in fills]
     return row
 
 
@@ -323,6 +371,31 @@ def main(argv=None) -> int:
           f"lots {res['open_lots']}  orders {res['orders']}  fills {res['fills']}  "
           f"working {res.get('working', 0)}  "
           f"[day {res['days_running']} of the run]")
+
+    for f in res.get("today_fills", []):
+        print(f"    {f['side'].upper():4s} {f['qty']:>4d}  {f['item'][:42]:42s} "
+              f"@ {f['price']:>10,.2f}")
+
+    blot = res.get("blotter", {})
+    if blot.get("open"):
+        print(f"\n    HOLDING ({len(blot['open'])})")
+        print(f"    {'item':42s} {'qty':>4s} {'bought@':>10s} {'now':>10s} "
+              f"{'delta':>10s} {'delta%':>8s}  held")
+        for r in blot["open"]:
+            print(f"    {r['item'][:42]:42s} {r['qty']:>4d} {r['buy_price']:>10,.2f} "
+                  f"{r['current_price']:>10,.2f} {r['delta_cny']:>+10,.2f} "
+                  f"{r['delta_pct']:>+8.1%}  {r['held_days']}d")
+    if blot.get("closed"):
+        realized = sum(r["pnl_cny"] for r in blot["closed"])
+        print(f"\n    CLOSED ({len(blot['closed'])})  realized {realized:+,.2f} CNY")
+        print(f"    {'item':42s} {'qty':>4s} {'buy@':>10s} {'sell@':>10s} "
+              f"{'pnl':>10s} {'pnl%':>8s}  reason")
+        for r in blot["closed"][-15:]:
+            print(f"    {r['item'][:42]:42s} {r['qty']:>4d} {r['buy_price']:>10,.2f} "
+                  f"{r['sell_price']:>10,.2f} {r['pnl_cny']:>+10,.2f} "
+                  f"{r['pnl_pct']:>+8.1%}  {r['exit_reason'][:22]}")
+    if not blot.get("open") and not blot.get("closed"):
+        print("    nothing held, nothing closed yet")
     return 0
 
 

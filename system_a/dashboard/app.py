@@ -488,12 +488,41 @@ elif view == "Simulation":
             f'of the selection thesis is switched off here.</p></div>',
             unsafe_allow_html=True)
 
-        if sim.get("fills"):
-            with st.expander(f"Fills ({len(sim['fills'])})"):
-                st.dataframe(pd.DataFrame(sim["fills"]),
-                             use_container_width=True, hide_index=True)
+        blot = sim.get("blotter", {}) or {}
+        pct = st.column_config.NumberColumn(format="percent")
+        money = st.column_config.NumberColumn(format="%.2f")
+
+        if blot.get("open"):
+            st.markdown('<p class="label">Holding now</p>', unsafe_allow_html=True)
+            odf = pd.DataFrame(blot["open"])[
+                ["item", "qty", "buy_price", "current_price", "delta_cny",
+                 "delta_pct", "held_days", "unlocks"]]
+            st.dataframe(odf, use_container_width=True, hide_index=True,
+                         column_config={"delta_pct": pct, "buy_price": money,
+                                        "current_price": money,
+                                        "delta_cny": money})
+            st.caption("Current price is today's live quote. Delta marks the "
+                       "position NET of the sell fee, which is what it is "
+                       "actually worth to us, not the headline quote.")
+
+        if blot.get("closed"):
+            realized = sum(r["pnl_cny"] for r in blot["closed"])
+            st.markdown(f'<p class="label">Closed trades · realized '
+                        f'{realized:+,.0f} CNY</p>', unsafe_allow_html=True)
+            cdf = pd.DataFrame(blot["closed"])[
+                ["item", "qty", "buy_price", "sell_price", "pnl_cny", "pnl_pct",
+                 "bought", "sold", "exit_reason"]]
+            st.dataframe(cdf, use_container_width=True, hide_index=True,
+                         column_config={"pnl_pct": pct, "buy_price": money,
+                                        "sell_price": money, "pnl_cny": money})
+
+        if not blot.get("open") and not blot.get("closed"):
+            st.caption("Nothing bought yet. Entries rest slightly below the ask "
+                       "and wait for a dip rather than crossing the spread, so "
+                       "the first fill can take a day or two.")
         if sim.get("pending"):
-            st.caption(f"{len(sim['pending'])} order(s) resting on the book.")
+            st.caption(f"{len(sim['pending'])} order(s) resting on the book, "
+                       "waiting for their price.")
 
 # ========================================================= TIMELINE
 elif view == "Timeline":

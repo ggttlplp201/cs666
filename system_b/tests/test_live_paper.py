@@ -129,3 +129,68 @@ def test_state_without_pending_key_is_tolerated(tmp_path):
     p.write_text(json.dumps({"cycles": [], "ledger": None, "started": None,
                              "fills": []}))
     assert load_state(p)["pending"] == []
+
+
+# ------------------------------------------------------------- the blotter
+def _lot(item, qty, buy, sell=None, fee=0.0):
+    from shared_b.schema import Lot
+    return Lot(lot_id=f"{item}{buy}", item=item, qty=qty, buy_price=buy,
+               buy_fee=0.0, buy_day=date(2026, 7, 20),
+               unlock_day=date(2026, 7, 27),
+               sell_day=date(2026, 7, 26) if sell else None,
+               sell_price=sell, sell_fee=fee,
+               exit_reason="take_profit_trim" if sell else "")
+
+
+class _FakeLedger:
+    def __init__(self, lots):
+        self.lots = lots
+
+
+def test_open_position_reports_buy_price_current_price_and_delta():
+    from system_b.live_paper import build_blotter
+    b = build_blotter(_FakeLedger([_lot(ITEMS[0], 10, 100.0)]),
+                      {ITEMS[0]: 120.0}, fee=0.0)
+    row = b["open"][0]
+    assert row["buy_price"] == 100.0
+    assert row["current_price"] == 120.0
+    assert row["delta_cny"] == pytest.approx(200.0)
+    assert row["delta_pct"] == pytest.approx(0.20)
+
+
+def test_open_position_is_marked_net_of_the_sell_fee():
+    """A position is worth what we could get for it, not the headline quote.
+    On Steam the fee is ~13%, so ignoring it overstates every holding."""
+    from system_b.live_paper import build_blotter
+    b = build_blotter(_FakeLedger([_lot(ITEMS[0], 10, 100.0)]),
+                      {ITEMS[0]: 100.0}, fee=0.1304)
+    row = b["open"][0]
+    assert row["delta_pct"] == pytest.approx(-0.1304), (
+        "a flat price must show the fee as a loss, not break-even")
+
+
+def test_closed_trade_reports_both_prices_and_realized_pnl():
+    from system_b.live_paper import build_blotter
+    b = build_blotter(_FakeLedger([_lot(ITEMS[0], 10, 100.0, sell=130.0, fee=130.0)]),
+                      {}, fee=0.1304)
+    row = b["closed"][0]
+    assert (row["buy_price"], row["sell_price"]) == (100.0, 130.0)
+    assert row["pnl_cny"] == pytest.approx(10 * 130.0 - 130.0 - 10 * 100.0)
+    assert row["exit_reason"] == "take_profit_trim"
+
+
+def test_open_and_closed_are_not_mixed():
+    from system_b.live_paper import build_blotter
+    b = build_blotter(_FakeLedger([
+        _lot(ITEMS[0], 5, 10.0), _lot(ITEMS[1], 5, 20.0, sell=25.0)]),
+        {ITEMS[0]: 11.0}, fee=0.0)
+    assert [r["item"] for r in b["open"]] == [ITEMS[0]]
+    assert [r["item"] for r in b["closed"]] == [ITEMS[1]]
+
+
+def test_an_unpriced_holding_is_omitted_rather_than_marked_at_zero():
+    """No quote today means no honest mark. Showing 0 would print a -100%
+    delta on a position that is merely unquoted."""
+    from system_b.live_paper import build_blotter
+    b = build_blotter(_FakeLedger([_lot(ITEMS[0], 5, 10.0)]), {}, fee=0.0)
+    assert b["open"] == []
