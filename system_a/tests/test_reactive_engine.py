@@ -461,3 +461,35 @@ class TestTradeUpEngine:
         # take_profit is OFF for trade-up lots → not sold on a slow +20% grind
         sells = [a for a in h.actions() if a[0] == "sell_placed" and a[2] == "take_profit"]
         assert not sells
+
+
+# ------------------------------------------- poller survives rate limiting
+def test_rate_limit_backs_off_instead_of_exiting():
+    """Regression: FeedUnavailable used to exit(1) on the theory that it meant
+    a broken key. Steam raises it for RATE LIMITING, which is transient, so a
+    429 storm killed the collector permanently and the live series went flat
+    for two days while everything downstream merely looked quiet."""
+    from system_a.runner import MAX_RETRY_WAIT, retry_wait
+
+    assert retry_wait(1, 300, rate_limited=True) > retry_wait(1, 300), (
+        "a rate limit must back off harder than an ordinary blip")
+    assert retry_wait(1, 300, rate_limited=True) >= 300
+
+
+def test_backoff_grows_with_consecutive_failures():
+    from system_a.runner import retry_wait
+    waits = [retry_wait(n, 300) for n in (1, 2, 3)]
+    assert waits == sorted(waits) and waits[0] < waits[-1]
+
+
+def test_backoff_is_capped_so_a_lifted_limit_resumes_promptly():
+    """An uncapped ramp means a transient limit costs hours of collection."""
+    from system_a.runner import MAX_RETRY_WAIT, retry_wait
+    assert retry_wait(999, 300, rate_limited=True) == MAX_RETRY_WAIT
+    assert MAX_RETRY_WAIT <= 30 * 60
+
+
+def test_first_failure_still_waits():
+    """Retrying instantly against a rate limiter just deepens the ban."""
+    from system_a.runner import retry_wait
+    assert retry_wait(0, 300) >= 300

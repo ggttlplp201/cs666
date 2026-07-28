@@ -35,6 +35,25 @@ from system_a.risk import RiskGate
 from system_a.rules import RulesTable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#: Longest a failing poller will idle before trying again. A lifted rate limit
+#: must be picked up in minutes, not after an hour of silence.
+MAX_RETRY_WAIT = 30 * 60
+
+
+def retry_wait(consecutive_failures: int, interval: float,
+               rate_limited: bool = False) -> float:
+    """Backoff before the next poll attempt.
+
+    Rate limits need minutes to clear, so they ramp five times faster than an
+    ordinary blip, and both are capped. Nothing here is ever fatal: the poller
+    used to exit(1) on FeedUnavailable, which Steam raises for rate limiting,
+    so one 429 storm ended collection permanently and the live series went
+    flat for two days while the dashboard just looked quiet."""
+    step = 5 if rate_limited else 1
+    return min(interval * max(consecutive_failures, 1) * step, MAX_RETRY_WAIT)
+
+
 M4A4 = "M4A4 | Desolate Space (Field-Tested)"
 M4A1S = "M4A1-S | Decimator (Field-Tested)"
 
@@ -184,14 +203,16 @@ def run_poller(config: Config, max_cycles: int | None = None,
         try:
             items = feed.fetch()
             consecutive_failures = 0
-        except FeedUnavailable as e:
-            print(f"feed unavailable (fatal): {e}")
-            return 1
-        except Exception as e:  # transient network/API errors: log, back off, retry
+        except Exception as e:
+            # FeedUnavailable used to exit(1) here on the theory that it meant a
+            # broken key. It does not: Steam raises it for RATE LIMITING, which
+            # is transient, and the poller then died permanently on a 429 storm
+            # and collected nothing for two days. A collector that exits is a
+            # collector that silently produces a flat line, so nothing here is
+            # fatal any more; it backs off and keeps trying.
             consecutive_failures += 1
-            # Cap backoff so a fixed key / lifted rate-limit resumes fast,
-            # instead of ballooning to hour-long idle waits.
-            wait = min(interval * consecutive_failures, 4 * interval)
+            wait = retry_wait(consecutive_failures, interval,
+                              rate_limited=isinstance(e, FeedUnavailable))
             print(
                 f"⚠ [{time.strftime('%Y-%m-%d %H:%M:%S')}] poll failed "
                 f"({consecutive_failures}x): {e} — retrying in {wait:.0f}s"
