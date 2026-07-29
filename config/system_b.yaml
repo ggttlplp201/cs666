@@ -41,7 +41,27 @@ entry:
                                 # would never clear a momentum-weighted floor);
                                 # hard filters carry most of the selection load
   max_new_positions_per_cycle: 3
-  entry_limit_discount_pct: 0.005  # left-side: rest the buy slightly below current ask
+  entry_limit_discount_pct: 0.015  # left-side: rest the buy BELOW the ask and let the
+                                   # dip come to you. Swept 0.005/0.010/0.015/0.020 on the
+                                   # 97-item iflow panel (2026-07-29): avg net/trade
+                                   # +2.9% / +3.8% / +6.6% / +2.5%; 0.010-0.015 both pass
+                                   # the go-live gate, 0.015 positive in both sample halves.
+
+# --- Exit-bracket overrides (evidence-based, 2026-07-29 iflow-97 backtests) ----
+# Layered on shared.yaml's brackets via deep-merge; see runs/backtest_iflow97_*.
+brackets:
+  distribution_exit:
+    enabled: false     # crash-course rule REMOVED: on real history it fired on the
+                       # accumulation base itself (median item fell another 5.9%
+                       # post-exit, but the rule realized -3% noise losses 18-28x
+                       # per run; every gated variant was worse than plain off —
+                       # runs stock/dse_gated/dse_hold20 vs dse_off)
+  band_trim_min_ret: 0.10   # was 0.05: +1-3% band-touch scalps were cutting winners
+                            # that went on to +10-15% (win rate 66%->71%, avg net
+                            # +1.7%->+2.3%)
+  bear_cut_ret: -0.02       # was -0.05: in a bear regime cut losers at -2%; Oct-2025
+                            # crash cost fell from -755 to -412 CNY with no change
+                            # to the pre-crash half
 
 # --- Regime classifier thresholds (Shared §2 quantification) ------------------
 regime_params:
