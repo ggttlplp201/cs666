@@ -172,6 +172,21 @@ class PositionalStrategy:
         # same way take-profit is scaled. The hard stops are NOT affected: a
         # risk limit must still be able to liquidate.
         soft_pct = float(br.get("soft_exit_qty_pct", 1.0))
+        # distribution-shape exit gating (Ivan, 1a51d72): a "high peak" volume
+        # profile right after a flat-base entry is often the accumulation base
+        # itself, so the rule can demand real evidence of distribution before
+        # crystallizing a loss (a drawdown / seasoned lot / falling cost zone).
+        dse = br.get("distribution_exit", {}) or {}
+        dse_enabled = bool(dse.get("enabled", True))
+        dse_min_loss = float(dse.get("min_loss_pct", 0.0))
+        dse_min_hold = int(dse.get("min_hold_days", 0))
+        dse_neg_drift = bool(dse.get("require_negative_drift", False))
+        band_trim_min = float(br.get("band_trim_min_ret", 0.05))
+        # NOTE: a cut threshold tighter than the round-trip cost floor (median
+        # ask->bid spread 3.4% + 1.5% fee + slippage ~= 5.4% on the real panel)
+        # fires on spread noise but realizes a real loss — measured, a -2%
+        # ask-side trigger settles near -7.6%. See docs/EXIT_COST_FLOOR.md.
+        bear_cut_ret = float(br.get("bear_cut_ret", -0.05))
         k = float(cfg.get("position_sizing", {}).get("volume_relative_k", 0.35))
         orders: list[Order] = []
 
@@ -221,20 +236,23 @@ class PositionalStrategy:
                 elif ret >= tp_lo:
                     reason = "take_profit_trim"
                     sell_qty = max(lot.qty // 2, 1)
-                elif feat is not None and feat["bb_touch"] == -1 and ret > 0.05:
+                elif feat is not None and feat["bb_touch"] == -1 and ret > band_trim_min:
                     reason = "upper_band_green_bar_trim"
                     sell_qty = max(lot.qty // 2, 1)
                 elif (
-                    feat is not None
+                    dse_enabled
+                    and feat is not None
                     and feat["vp_shape_score"] <= -0.7
                     and feat["vp_price_vs_zone"] < 0
-                    and ret < 0
+                    and ret < -dse_min_loss
+                    and (day - lot.buy_day).days >= dse_min_hold
+                    and (not dse_neg_drift or feat["vp_drift"] < 0)
                 ):
                     # a SOFT signal ("the shape looks distributive"), not a risk
                     # limit — the hard stops above already own that job
                     reason = "distribution_shape_exit"
                     sell_qty = max(int(lot.qty * soft_pct), 1)
-                elif regime.regime == Regime.BEAR and ret < -0.05:
+                elif regime.regime == Regime.BEAR and ret < bear_cut_ret:
                     reason = "bear_regime_cut"
                     sell_qty = max(int(lot.qty * soft_pct), 1)
 

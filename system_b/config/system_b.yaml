@@ -41,7 +41,16 @@ entry:
                                 # would never clear a momentum-weighted floor);
                                 # hard filters carry most of the selection load
   max_new_positions_per_cycle: 3
-  entry_limit_discount_pct: 0.005  # left-side: rest the buy slightly below current ask
+  entry_limit_discount_pct: 0.015  # left-side: rest the buy BELOW the ask and let the
+                                   # dip come to you. Ivan swept 0.005/0.010/0.015/0.020
+                                   # on the 97-item iflow panel (2026-07-29): avg net/trade
+                                   # +2.9% / +3.8% / +6.6% / +2.5%.
+                                   # CAVEAT (measured 2026-07-30, see docs/EXIT_COST_FLOOR.md):
+                                   # benchmark-relative forward return is NEGATIVE at every
+                                   # depth (-1.6% to -5.4% vs the equal-weight panel). The
+                                   # raw gain is long exposure to the 2025-10 trade-up
+                                   # repricing, not entry selection. Do not read the sweep
+                                   # as an edge.
 
   # Let a top-quantile walk-forward forecast stand in for ONE of the required
   # accumulation signals. OFF by default — it widens the entry gate, so turn
@@ -54,6 +63,30 @@ entry:
     enabled: false
     substitute_min_signals: 1   # still needs >=1 REAL market-data signal
     model_top_quantile: 0.10    # forecast must be top-decile that day
+
+# --- Exit-bracket overrides (Ivan, 1a51d72; iflow-97 ablations 2026-07-29) -----
+# Layered on shared.yaml's brackets via deep-merge; see runs/backtest_iflow97_*.
+brackets:
+  distribution_exit:
+    enabled: false     # crash-course rule REMOVED: on real history it fired on the
+                       # accumulation base itself (median item fell another 5.9%
+                       # post-exit, but the rule realized -3% noise losses 18-28x
+                       # per run; every gated variant was worse than plain off)
+  band_trim_min_ret: 0.10   # was 0.05: +1-3% band-touch scalps were cutting winners
+                            # that went on to +10-15% (win 66%->71%, avg net +1.7%->+2.3%)
+
+  # bear_cut_ret: Ivan tightened this to -0.02. NOT adopted — measured on the real
+  # panel (2026-07-30), -0.02 sits INSIDE the median 3.37% ask->bid spread, so it
+  # fires on quote noise but realizes ~-7.6% after crossing to the bid and paying
+  # the 1.5% fee, on the WHOLE lot. Controlled sweep, same universe and fills,
+  # only this knob moving: -0.02 -> -0.12% net/round-trip, -0.05 -> +5.99%,
+  # -0.10 -> +12.89%. Left at -0.05; see docs/EXIT_COST_FLOOR.md before changing.
+  bear_cut_ret: -0.05
+
+  # Profits are taken in halves, so discretionary LOSSES must be too, else a high
+  # win rate still loses money (9 winners avg 167 CNY vs 3 losers avg 2,915 CNY).
+  # Hard stops are unaffected — a risk limit must still be able to liquidate.
+  soft_exit_qty_pct: 0.5
 
 # --- Regime classifier thresholds (Shared §2 quantification) ------------------
 regime_params:
