@@ -74,19 +74,23 @@ brackets:
                        # per run; every gated variant was worse than plain off)
   band_trim_min_ret: 0.10   # was 0.05: +1-3% band-touch scalps were cutting winners
                             # that went on to +10-15% (win 66%->71%, avg net +1.7%->+2.3%)
+  bear_cut_ret: -0.02       # was -0.05: in a bear regime cut losers at -2%; Oct-2025
+                            # crash cost fell from -755 to -412 CNY with no change
+                            # to the pre-crash half
 
-  # bear_cut_ret: Ivan tightened this to -0.02. NOT adopted — measured on the real
-  # panel (2026-07-30), -0.02 sits INSIDE the median 3.37% ask->bid spread, so it
-  # fires on quote noise but realizes ~-7.6% after crossing to the bid and paying
-  # the 1.5% fee, on the WHOLE lot. Controlled sweep, same universe and fills,
-  # only this knob moving: -0.02 -> -0.12% net/round-trip, -0.05 -> +5.99%,
-  # -0.10 -> +12.89%. Left at -0.05; see docs/EXIT_COST_FLOOR.md before changing.
-  bear_cut_ret: -0.05
-
-  # Profits are taken in halves, so discretionary LOSSES must be too, else a high
-  # win rate still loses money (9 winners avg 167 CNY vs 3 losers avg 2,915 CNY).
-  # Hard stops are unaffected — a risk limit must still be able to liquidate.
-  soft_exit_qty_pct: 0.5
+# NOTE (2026-07-30, does NOT change anything above): an independent measurement
+# on the real panel disagrees with the bear_cut_ret=-0.02 result, and is written
+# up in docs/EXIT_COST_FLOOR.md. In short, -0.02 sits inside the median 3.37%
+# ask->bid spread, so it can trigger on quote noise while realizing about -7.6%
+# after crossing to the bid and paying the fee, on the whole lot. A controlled
+# sweep with only that knob moving gave -0.02 -> -0.12% net/round-trip,
+# -0.05 -> +5.99%, -0.10 -> +12.89%. The tuned value is LEFT AS IVAN SET IT --
+# this is a flag for review, not a change. Read that doc before touching it.
+#
+# Same status for `brackets.soft_exit_qty_pct` (implemented in strategy.py,
+# default 1.0 = Ivan's behavior, deliberately NOT set here): profits are taken in
+# halves while discretionary losses take the whole lot, which is how a 78% win
+# rate can still lose money.
 
 # --- Greedy ratchet strategy (system_b/greedy.py; run_backtest --strategy greedy)
 # Trailing-profit exits, hard stop, watch-and-reenter. Entry is LIQUIDITY-ONLY

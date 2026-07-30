@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import sampleJson from "./data/sample.json";
+import greedyJson from "./data/sample_greedy.json";
 import { BarChart } from "./components/BarChart";
+import { Blotter } from "./components/Blotter";
 import { LineChart } from "./components/LineChart";
 import { RegimeStrip } from "./components/RegimeStrip";
 import { GateTile, StatTile } from "./components/StatTile";
@@ -9,7 +11,12 @@ import { fmtMoney, fmtNum, fmtPct, rollingMean } from "./lib/format";
 import { loadRunFromFiles } from "./lib/parse";
 import type { RunData } from "./types";
 
-const sample = sampleJson as unknown as RunData;
+/** Bundled runs, so the two strategies can be compared without loading files.
+ * Drag & drop still overrides both. */
+const BUNDLED: RunData[] = [
+  sampleJson as unknown as RunData,
+  greedyJson as unknown as RunData,
+];
 
 function useThemeToggle(): () => void {
   return useCallback(() => {
@@ -21,7 +28,10 @@ function useThemeToggle(): () => void {
 }
 
 export default function App() {
-  const [run, setRun] = useState<RunData>(sample);
+  // index, not identity: two bundled runs can share a name, and comparing by
+  // name made every matching button render as active
+  const [bundledIdx, setBundledIdx] = useState<number | null>(0);
+  const [run, setRun] = useState<RunData>(BUNDLED[0]);
   const [drag, setDrag] = useState(false);
   const toggleTheme = useThemeToggle();
 
@@ -29,12 +39,27 @@ export default function App() {
     if (files.length === 0) return;
     const loaded = await loadRunFromFiles(files);
     const n = files.map((f) => f.name).sort().join(", ");
+    setBundledIdx(null);
     setRun({ ...loaded, name: `loaded: ${n.slice(0, 60)}${n.length > 60 ? "…" : ""}` });
   }, []);
 
   const s = run.summary;
   const equityDays = run.equity.map((p) => p.day);
   const equityValues: (number | null)[] = run.equity.map((p) => p.equity);
+
+  // group the blotter by exit rule, biggest group first: which rule is doing
+  // the trading is the first thing you want to see on a new strategy
+  const blotterGroups = useMemo(() => {
+    const by = new Map<string, typeof run.trades>();
+    for (const t of run.trades) {
+      const k = t.exit_reason || "(no rule)";
+      if (!by.has(k)) by.set(k, []);
+      by.get(k)!.push(t);
+    }
+    return [...by.entries()]
+      .map(([rule, trades]) => ({ rule, trades }))
+      .sort((a, b) => b.trades.length - a.trades.length);
+  }, [run.trades]);
 
   const icDays = run.rankIc.map((p) => p.day);
   const icDaily: number[] = run.rankIc.map((p) => p.ic);
@@ -71,6 +96,20 @@ export default function App() {
         <h1>System B — positional value/trend</h1>
         <span className="run-name">{run.name}</span>
         <span className="spacer" />
+        <span className="run-picker">
+          {BUNDLED.map((r, i) => (
+            <button
+              key={i}
+              className={bundledIdx === i ? "active" : ""}
+              onClick={() => {
+                setBundledIdx(i);
+                setRun(r);
+              }}
+            >
+              {r.summary.strategy === "greedy" ? "greedy" : "positional"}
+            </button>
+          ))}
+        </span>
         <label className="load">
           load run files
           <input
@@ -199,6 +238,34 @@ export default function App() {
           <p className="sub">the trade journal's attribution — every exit carries its rule</p>
           <TradesTable trades={run.trades} />
         </div>
+      </div>
+
+      <h2 className="section-head">Trade blotter</h2>
+      <p className="section-sub">
+        Every closed lot as a line: what was bought and sold, on which dates, at which prices,
+        and the delta. <strong>Δ price</strong> is the gross move a chart would show you;{" "}
+        <strong>Δ net</strong> is what the book actually received after the {fmtPct(0.015, 1)} BUFF
+        sell fee and slippage. The gap between the two columns is the round-trip cost floor
+        (~{fmtPct(0.0587, 1)} on real history), which is why a positive price move can still be a
+        losing trade.
+      </p>
+
+      <div className="grid">
+        <div className="card wide">
+          <h2>All closed lots</h2>
+          <p className="sub">oldest first</p>
+          <Blotter trades={run.trades} />
+        </div>
+
+        {blotterGroups.map((g) => (
+          <div className="card wide" key={g.rule}>
+            <h2>{g.rule}</h2>
+            <p className="sub">
+              {g.trades.length} {g.trades.length === 1 ? "lot" : "lots"} exited by this rule
+            </p>
+            <Blotter trades={g.trades} />
+          </div>
+        ))}
       </div>
 
       <p className="footer-note">

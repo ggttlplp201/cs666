@@ -89,6 +89,14 @@ class BacktestResult:
                 "item": l.item,
                 "entry_rule": l.thesis.split("|")[0] if l.thesis else "",
                 "exit_reason": l.exit_reason,
+                # the blotter fields: what was bought/sold, when, and at what
+                # price. `ret_pct` is the gross price move; `pnl` is net of both
+                # fees, so on BUFF (sell-side fee) pnl is the honest number.
+                "qty": int(l.qty),
+                "buy_day": l.buy_day,
+                "buy_price": float(l.buy_price),
+                "sell_day": l.sell_day,
+                "sell_price": float(l.sell_price) if l.sell_price is not None else None,
                 "hold_days": (l.sell_day - l.buy_day).days if l.sell_day else None,
                 "pnl": l.realized_pnl(),
                 "ret_pct": (l.sell_price / l.buy_price - 1) if l.sell_price else None,

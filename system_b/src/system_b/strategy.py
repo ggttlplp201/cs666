@@ -206,13 +206,21 @@ class PositionalStrategy:
             bearish_event = any(e.direction == "bearish" and e.confidence >= 0.6 for e in events)
 
             sold_today = 0
-            sell_in_flight = max(1, int(cfg.get("execution", {}).get("order_ttl_days", 1)))
+            # Only meaningful when orders actually REST: the guard exists to stop
+            # a second sell being stacked on a lot whose sell is still working.
+            # Under fill-or-kill (order_ttl_days = 1, the default and what the
+            # committed config uses) nothing rests — an unfilled sell is dead by
+            # the next cycle — so blocking re-issue for a day would just delay a
+            # legitimate retry and silently change results on that config.
+            sell_ttl = int(cfg.get("execution", {}).get("order_ttl_days", 1))
+            sell_in_flight = sell_ttl if sell_ttl > 1 else 0
             for lot in ledger.unlocked_lots(day, item):
                 if sold_today >= day_sell_cap:
                     break
                 # a sell for this lot may still be working — don't stack another
                 prev_sell = self.last_sell_day.get(lot.lot_id)
-                if prev_sell is not None and (day - prev_sell).days <= sell_in_flight:
+                if sell_in_flight and prev_sell is not None \
+                        and (day - prev_sell).days <= sell_in_flight:
                     continue
                 # Bracket triggers are measured ASK-side (same side we bought on;
                 # the crash-course +10-15%/-10% rules are chart/list prices).

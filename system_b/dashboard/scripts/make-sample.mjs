@@ -55,6 +55,11 @@ const trades = attrTxt
       hold_days: num(r.hold_days),
       pnl: Number(r.pnl),
       ret_pct: num(r.ret_pct),
+      qty: num(r.qty),
+      buy_day: (r.buy_day ?? "").slice(0, 10),
+      buy_price: num(r.buy_price),
+      sell_day: (r.sell_day ?? "").slice(0, 10),
+      sell_price: num(r.sell_price),
     }))
   : [];
 let importances = [];

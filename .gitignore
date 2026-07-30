@@ -20,6 +20,11 @@ __pycache__/
 # Runtime state (paper wallet, snapshots, provenance logs)
 var/
 
-# Runtime artifacts (backtest runs, paper state, collected data)
+# Runtime artifacts (backtest runs, paper state, collected data).
+# Scoped to the per-system runtime dirs on purpose: a bare `data/` also matched
+# system_b/dashboard/src/data/, which holds the dashboard's BUNDLED sample run.
+# That file is imported by App.tsx, so ignoring it meant a fresh clone could not
+# build the dashboard at all.
 runs/
-data/
+/system_a/data/
+/system_b/data/

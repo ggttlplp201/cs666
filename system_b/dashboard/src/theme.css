@@ -161,3 +161,41 @@ table.trades .neg { color: var(--delta-bad); }
 
 .dropzone { outline: 2px dashed var(--accent); outline-offset: -2px; border-radius: 12px; }
 .footer-note { color: var(--text-muted); font-size: 12px; margin-top: 20px; }
+
+/* --- Trade blotter section ------------------------------------------------ */
+.section-head {
+  font-size: 17px;
+  font-weight: 650;
+  margin: 30px 0 2px;
+  padding-top: 22px;
+  border-top: 1px solid var(--grid);
+}
+.section-sub {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin: 0 0 14px;
+  max-width: 78ch;
+}
+.section-sub strong { color: var(--text); font-weight: 600; }
+
+/* A blotter is inherently wide; it scrolls in its own box so the page body
+   never scrolls sideways. */
+.scroll-x { overflow-x: auto; }
+.scroll-x table.trades { min-width: 880px; }
+
+/* Bundled-run picker in the topbar. */
+.run-picker { display: inline-flex; gap: 0; margin-right: 10px; }
+.run-picker button {
+  font-size: 12px;
+  padding: 5px 11px;
+  border-radius: 0;
+  margin: 0;
+}
+.run-picker button:first-child { border-radius: 6px 0 0 6px; }
+.run-picker button:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+.run-picker button.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}

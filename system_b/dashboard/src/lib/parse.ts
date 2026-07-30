@@ -68,6 +68,11 @@ export function parseAttributionCsv(text: string): Trade[] {
     hold_days: Number.isFinite(num(r["hold_days"])) ? num(r["hold_days"]) : null,
     pnl: num(r["pnl"]),
     ret_pct: Number.isFinite(num(r["ret_pct"])) ? num(r["ret_pct"]) : null,
+    qty: Number.isFinite(num(r["qty"])) ? num(r["qty"]) : null,
+    buy_day: (r["buy_day"] ?? "").slice(0, 10),
+    buy_price: Number.isFinite(num(r["buy_price"])) ? num(r["buy_price"]) : null,
+    sell_day: (r["sell_day"] ?? "").slice(0, 10),
+    sell_price: Number.isFinite(num(r["sell_price"])) ? num(r["sell_price"]) : null,
   }));
 }
 

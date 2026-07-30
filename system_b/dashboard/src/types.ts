@@ -42,6 +42,12 @@ export interface Trade {
   hold_days: number | null;
   pnl: number;
   ret_pct: number | null;
+  /** Blotter fields — what was bought/sold, when, at what price. */
+  qty: number | null;
+  buy_day: string;
+  buy_price: number | null;
+  sell_day: string;
+  sell_price: number | null;
 }
 
 export interface ImportanceRow {
