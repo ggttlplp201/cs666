@@ -25,6 +25,7 @@ from shared_b.journal import Journal
 from shared_b.synthetic import generate
 
 from .model import forward_log_returns
+from .greedy import GreedyStrategy
 from .strategy import PositionalStrategy
 
 
@@ -57,6 +58,19 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--soft-exit-pct", type=float, default=None,
                     help="fraction of a lot sold by discretionary shape/regime "
                          "exits (1.0 = whole lot; 0.5 = scale out like a TP trim)")
+    ap.add_argument("--strategy", choices=["positional", "greedy"], default="positional",
+                    help="positional = the structural System B strategy; "
+                         "greedy = the trailing-ratchet strategy (system_b/greedy.py)")
+    ap.add_argument("--greedy-literal", action="store_true",
+                    help="run the greedy spec verbatim (spread_aware=false): a 1-point "
+                         "trail and a -5%% stop, both inside the ~5.9%% round-trip cost "
+                         "floor. For comparison against the spread-aware default.")
+    ap.add_argument("--greedy-stop", type=float, default=None,
+                    help="override greedy.stop_pct, e.g. 0.10")
+    ap.add_argument("--greedy-giveback", type=float, default=None,
+                    help="override greedy.giveback_pct, e.g. 0.03")
+    ap.add_argument("--greedy-arm", type=float, default=None,
+                    help="override greedy.arm_pct, e.g. 0.15")
     args = ap.parse_args(argv)
 
     cfg = load_config("b")
@@ -79,6 +93,14 @@ def main(argv: list[str] | None = None) -> dict:
     if args.model_sub:
         cfg.setdefault("entry", {}).setdefault(
             "model_signal_substitution", {})["enabled"] = True
+    if args.greedy_literal:
+        cfg.setdefault("greedy", {})["spread_aware"] = False
+    if args.greedy_stop is not None:
+        cfg.setdefault("greedy", {})["stop_pct"] = args.greedy_stop
+    if args.greedy_giveback is not None:
+        cfg.setdefault("greedy", {})["giveback_pct"] = args.greedy_giveback
+    if args.greedy_arm is not None:
+        cfg.setdefault("greedy", {})["arm_pct"] = args.greedy_arm
 
     if args.synthetic or not args.data_dir:
         market = generate(n_items=args.items, n_days=args.days, seed=args.seed)
@@ -93,7 +115,10 @@ def main(argv: list[str] | None = None) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     journal = Journal(out_dir / "journal.jsonl")
-    strategy = PositionalStrategy(cfg=dict(cfg))
+    if args.strategy == "greedy":
+        strategy = GreedyStrategy(cfg=dict(cfg))
+    else:
+        strategy = PositionalStrategy(cfg=dict(cfg))
     horizon = int(cfg.at("model.horizon_days", 21))
     strategy.set_targets(forward_log_returns(panel.frames, horizon))
 
@@ -116,12 +141,17 @@ def main(argv: list[str] | None = None) -> dict:
 
     summary = result.summary()
     summary["source"] = source
-    summary["model_type"] = strategy.ranker.model_type
-    summary["n_refits"] = len(strategy.ranker.refits)
+    summary["strategy"] = args.strategy
+    ranker = getattr(strategy, "ranker", None)
+    summary["model_type"] = ranker.model_type if ranker else None
+    summary["n_refits"] = len(ranker.refits) if ranker else 0
 
     # rank IC of the walk-forward predictions
     targets = forward_log_returns(panel.frames, horizon)
-    ic = strategy.ranker.rank_ic(targets, strategy.predictions)
+    if ranker is not None:
+        ic = ranker.rank_ic(targets, strategy.predictions)
+    else:
+        ic = pd.Series(dtype=float)   # greedy ranks by liquidity, not a forecast
     summary["rank_ic_mean"] = float(ic.mean()) if len(ic) else None
     summary["rank_ic_days"] = int(len(ic))
 
@@ -134,11 +164,19 @@ def main(argv: list[str] | None = None) -> dict:
     max_dd = float(gate.get("max_drawdown", -0.20))
     atr = summary.get("avg_trade_return_net")
     ic_mean = summary.get("rank_ic_mean")
-    # an untrained model (ic None) FAILS the gate — "never trained" is not a pass
+    # an untrained model (ic None) FAILS the gate — "never trained" is not a pass.
+    # The greedy strategy emits no forecast at all, so a forecast IC is not just
+    # missing but undefined; the criterion is recorded as n/a rather than
+    # silently waived, and every other criterion still has to pass.
+    if ranker is None:
+        ic_ok = True
+        summary["rank_ic_criterion"] = "n/a — strategy emits no forecast"
+    else:
+        ic_ok = ic_mean is not None and ic_mean >= min_ic
     summary["go_live_gate_pass"] = bool(
         atr is not None and atr >= min_trade_ret
         and summary.get("n_trades_closed", 0) >= min_trades
-        and ic_mean is not None and ic_mean >= min_ic
+        and ic_ok
         and summary.get("max_drawdown", -1) >= max_dd
     )
 
@@ -146,9 +184,9 @@ def main(argv: list[str] | None = None) -> dict:
     result.attribution().to_csv(out_dir / "attribution.csv", index=False)
     if len(ic):
         ic.to_csv(out_dir / "rank_ic.csv", header=["spearman_ic"])
-    if strategy.ranker.refits:
-        imp = pd.DataFrame([r.importances for r in strategy.ranker.refits],
-                           index=[r.day for r in strategy.ranker.refits])
+    if ranker is not None and ranker.refits:
+        imp = pd.DataFrame([r.importances for r in ranker.refits],
+                           index=[r.day for r in ranker.refits])
         imp.to_csv(out_dir / "feature_importances.csv")
     with open(out_dir / "summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=str)

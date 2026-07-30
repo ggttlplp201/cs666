@@ -88,6 +88,36 @@ brackets:
   # Hard stops are unaffected — a risk limit must still be able to liquidate.
   soft_exit_qty_pct: 0.5
 
+# --- Greedy ratchet strategy (system_b/greedy.py; run_backtest --strategy greedy)
+# Trailing-profit exits, hard stop, watch-and-reenter. Entry is LIQUIDITY-ONLY
+# (safety hard filters), so it does not depend on the placeholder human fields
+# in the 97-item draft universe.
+greedy:
+  arm_pct: 0.10            # ratchet arms once the position is +10% (ask-side)
+  giveback_pct: 0.01       # armed: sell after giving back 1 point from the high
+                           # water ("ran to +15%, fell to +14% -> out")
+  stop_pct: 0.05           # unarmed: sell if -5%, then watch and do nothing else
+
+  # spread_aware is the improvement over the literal spec. Measured cost floor
+  # on the real panel is ~5.87% (median ask->bid spread 3.37% + 1.5% fee + 1%
+  # slippage) -- see docs/EXIT_COST_FLOOR.md. A 1-point giveback sits INSIDE
+  # the spread, so literally it fires on quote noise; a -5% stop realizes about
+  # -10.5%. With spread_aware the giveback floors at spread_k * spread and the
+  # stop widens to at least the cost floor, so a trigger means a real move.
+  # Set false (or pass --greedy-literal) to run the spec verbatim.
+  spread_aware: true
+  spread_k: 1.0
+  min_dip_pct: 0.01        # a re-entry needs a real dip below our exit price,
+                           # else oscillation around it churns at ~5.9% a trip
+
+  max_reentries: 3         # bounded: each round trip pays the cost floor again
+  reentry_cooldown_days: 3
+  max_new_positions_per_cycle: 5
+  max_concurrent_positions: 20
+  entry_limit_discount_pct: 0.0   # take the ask; the entry-dip discount showed
+                                  # NEGATIVE benchmark-relative return at every
+                                  # depth tested, so greedy does not rely on it
+
 # --- Regime classifier thresholds (Shared §2 quantification) ------------------
 regime_params:
   ma_window: 20

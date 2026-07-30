@@ -59,23 +59,35 @@ def hard_filter_reasons(
     return reasons
 
 
+# Gates that are about tradeability and safety rather than structural opinion.
+# The allowlist may waive everything EXCEPT these; `safety_only` keeps only
+# these. Supply / case_price / aesthetics are the human-supplied structural
+# fields (HANDOFF §B) and are the ones legitimately waivable.
+SAFETY = ("blocklisted", "late_stage_pump_shape", "late_parabolic_attention",
+          "avg_volume", "valid_buy_orders", "buy_orders")
+
+
 def apply_hard_filters(
     features: pd.DataFrame,
     meta_map: dict[str, ItemMeta],
     cfg_sel: dict,
     blocklist: set[str],
     allowlist: set[str] | None = None,
+    safety_only: bool = False,
 ) -> tuple[pd.DataFrame, dict[str, list[str]]]:
-    """Split the cross-section into (passing frame, {item: rejection reasons})."""
+    """Split the cross-section into (passing frame, {item: rejection reasons}).
+
+    `safety_only=True` enforces only the liquidity/safety gates for EVERY item,
+    i.e. an allowlist covering the whole universe. Used by the greedy strategy,
+    whose entry is liquidity-gated by design and which therefore must not be
+    blocked by placeholder supply/case_price metadata.
+    """
     rejected: dict[str, list[str]] = {}
     keep: list[str] = []
-    # gates the allowlist may NOT bypass: safety, not structural opinion
-    SAFETY = ("blocklisted", "late_stage_pump_shape", "late_parabolic_attention",
-              "avg_volume", "valid_buy_orders", "buy_orders")
     for item, row in features.iterrows():
         item = str(item)
         reasons = hard_filter_reasons(row, meta_map.get(item), cfg_sel, blocklist)
-        if allowlist and item in allowlist:
+        if safety_only or (allowlist and item in allowlist):
             reasons = [r for r in reasons if any(r.startswith(s) for s in SAFETY)]
         if reasons:
             rejected[item] = reasons

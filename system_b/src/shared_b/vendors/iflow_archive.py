@@ -155,14 +155,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--files-per-day", type=int, default=2,
                     help="archive holds 2 snapshots/day; 2 = use both (later wins)")
     ap.add_argument("--valid-bid-band-pct", type=float, default=0.05)
+    ap.add_argument("--universe", type=str, default=None,
+                    help="universe yaml to build the panel for, relative to the "
+                         "repo root (default: config's universe.universe_path). "
+                         "Use config/universe_b_draft.yaml for the 97-item screen.")
     args = ap.parse_args(argv)
 
     from system_b.universe import load_universe
 
-    uni = load_universe(REPO_ROOT / cfg.at("universe.universe_path", "config/universe_b.yaml"))
+    uni_path = args.universe or cfg.at("universe.universe_path", "config/universe_b.yaml")
+    uni = load_universe(REPO_ROOT / uni_path)
     if not uni:
-        raise SystemExit("universe is empty — fill config/universe_b.yaml first")
+        raise SystemExit(f"universe is empty — fill {uni_path} first")
     universe = set(uni)
+    print(f"universe: {len(universe)} items from {uni_path}")
 
     if pd.Timestamp(args.start) < pd.Timestamp(DEFAULT_START):
         print(f"WARNING: --start {args.start} predates {DEFAULT_START} (NEW-schema era); the OLD "
