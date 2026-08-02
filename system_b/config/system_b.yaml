@@ -97,10 +97,15 @@ brackets:
 # (safety hard filters), so it does not depend on the placeholder human fields
 # in the 97-item draft universe.
 greedy:
-  arm_pct: 0.10            # ratchet arms once the position is +10% (ask-side)
+  arm_pct: 0.20            # search favoured a higher target once the spread cap makes
+                           # each winner actually pay (tp 20-30% dominated tp 10%)
   giveback_pct: 0.01       # armed: sell after giving back 1 point from the high
                            # water ("ran to +15%, fell to +14% -> out")
-  stop_pct: 0.05           # unarmed: sell if -5%, then watch and do nothing else
+  stop_pct: 0.20           # WIDE, and every top search candidate agreed: a cut inside
+                           # the cost floor realizes ~-9% on quote noise. -20% means the
+                           # ratchet mostly exits on the trail, not the stop. Read the
+                           # caveat in the search notes: a wide stop is only safe while
+                           # the entry gate keeps you out of falling books.
 
   # spread_aware is the improvement over the literal spec. Measured cost floor
   # on the real panel is ~5.87% (median ask->bid spread 3.37% + 1.5% fee + 1%
@@ -118,6 +123,44 @@ greedy:
   reentry_cooldown_days: 3
   max_new_positions_per_cycle: 5
   max_concurrent_positions: 20
+
+  # --- entry conditions (research/greedy_entry_edge.py, 41,382 round trips) ---
+  # Buying "whatever is most liquid" has no edge, and a rule with no entry edge
+  # can only lose to the round-trip cost floor. Net return grouped by entry-time
+  # features, on the CLEAN 97-item panel, both sample halves checked:
+  #   spread <= 2%   tightest quintile is best and the effect is monotone.
+  #                  Arithmetic, not a fitted pattern: the cost floor is per item.
+  #   price <= 200   strongly monotone (<=Y119 +7.5% mean, >Y619 -7.3%); the
+  #                  >Y350 control is negative in BOTH halves.
+  #   momentum >= 0  positive 21d return beats negative in every bucket.
+  #   depth >= 5     more valid bids -> better fills and better median.
+  # Combined ("cheap + tight + mom>0"): win 60.7%, mean +7.70%, median +2.68%,
+  # positive in both halves. CAVEAT: the pre-2025-04 half is only +0.88% mean,
+  # which is inside the noise for overlapping samples - most of the measured
+  # edge sits in the half containing the 2025-10 trade-up repricing. Treat the
+  # spread and depth conditions as robust and the price/momentum ones as
+  # provisional. Set any value to 0 to disable that condition.
+  # Values below come from research/strategy_search.py: 432 candidates, chosen on
+  # a TRAIN half and reported on a held-out TEST half, and required to be
+  # positive in both halves AND to survive dropping their 5 best trades. 78
+  # passed; the whole leading region shares the same shape, which is why these
+  # are the values and not a single lucky cell:
+  #     spread <= 1.0%, above the middle band, real bid depth, wide cut.
+  # Winner (tp 20 / cut -20 / spread <=1% / above_mid+depth): n=1,103,
+  # train win 53.9% -> TEST win 62.7%, test mean +7.9%/trade, +2.4% jackknifed.
+  #
+  # WHY the spread cap dominates: it sets the cost floor per item. At the median
+  # 3.4% spread a +12% winner nets +5.5% while a -10% loser realizes -15.2%, so
+  # break-even needs a ~73% win rate - unreachable. At a 1.0-1.5% spread the
+  # same bracket needs ~53%, which these factors do reach. Arithmetic, not a
+  # fitted pattern, so it is the condition to trust most.
+  max_spread_pct: 0.010
+  min_valid_buy_orders: 3
+  require_above_middle_band: true
+  max_price_cny: 0         # disabled: price<=200 selected the 2025-10 trade-up
+                           # movers, not an edge - 83% of its profit was ONE item
+  min_momentum_21d: null   # disabled: provisional, and weak in the pre-2025 half
+  rank_by: volume_avg_20   # tradeability; ret_21d ranks by momentum instead
   entry_limit_discount_pct: 0.0   # take the ask; the entry-dip discount showed
                                   # NEGATIVE benchmark-relative return at every
                                   # depth tested, so greedy does not rely on it

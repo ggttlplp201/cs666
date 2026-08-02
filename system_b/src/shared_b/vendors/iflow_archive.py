@@ -88,6 +88,8 @@ def ingest_snapshot(
     universe: set[str],
     rows: dict[tuple[str, date], dict],
     valid_bid_band_pct: float,
+    max_crossed_bid: float | None = None,
+    dropped: list[int] | None = None,
 ) -> int:
     """Merge one archive zip into ``rows`` keyed (item, day).
 
@@ -110,6 +112,18 @@ def ingest_snapshot(
                 parsed = parse_new_record(record, valid_bid_band_pct)
                 if parsed is None:
                     continue
+                # DATA INTEGRITY: the archive's buff_buy field goes stale for long
+                # stretches while buff_sell keeps updating, leaving a bid ABOVE the
+                # ask (verified in the raw zips: AK-47 Redline FT 2024-05, ask
+                # ladder [128.0, 128.3, 129.0] against a frozen bid ladder
+                # [248.0, 247.0, 246.0]). Such a row lets a backtest sell higher
+                # than it bought, which is free money that does not exist.
+                if max_crossed_bid is not None:
+                    ask, bid = parsed["sell_price"], parsed["buy_price"]
+                    if ask > 0 and bid > ask * (1 - max_crossed_bid):
+                        if dropped is not None:
+                            dropped[0] += 1
+                        continue
                 rows[(name, day)] = parsed
                 n += 1
     return n
@@ -155,6 +169,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--files-per-day", type=int, default=2,
                     help="archive holds 2 snapshots/day; 2 = use both (later wins)")
     ap.add_argument("--valid-bid-band-pct", type=float, default=0.05)
+    ap.add_argument("--max-crossed-bid", type=float, default=None,
+                    help="DATA INTEGRITY: drop rows whose bid is above ask*(1-x), i.e. a "
+                         "crossed/stale book. The archive's buff_buy field goes stale for "
+                         "long stretches while buff_sell keeps moving, which leaves bid > ask "
+                         "on ~18%% of item-days. Those rows let a backtest SELL ABOVE the "
+                         "price it bought at — free money that does not exist. Use 0.0 to "
+                         "drop only truly crossed rows. Default None = keep everything "
+                         "(reproduces earlier panels).")
     ap.add_argument("--universe", type=str, default=None,
                     help="universe yaml to build the panel for, relative to the "
                          "repo root (default: config's universe.universe_path). "
@@ -198,13 +220,15 @@ def main(argv: list[str] | None = None) -> int:
     cache_dir = REPO_ROOT / arc["cache_dir"]
     gap = float(arc.get("request_gap_seconds", 1.0))
     rows: dict[tuple[str, date], dict] = {}
+    dropped = [0]
     last_request = [0.0]
     failed: list[str] = []
     for i, name in enumerate(sorted(files), 1):
         try:
             path = fetch_file(arc["base_url"], arc["dir_name"], name, cache_dir,
                               gap, last_request)
-            ingest_snapshot(path, universe, rows, args.valid_bid_band_pct)
+            ingest_snapshot(path, universe, rows, args.valid_bid_band_pct,
+                            args.max_crossed_bid, dropped)
         except Exception as e:                                    # noqa: BLE001
             failed.append(name)
             print(f"[{i}/{len(files)}] {name}: ERROR {e}")

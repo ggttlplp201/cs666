@@ -174,6 +174,34 @@ class GreedyStrategy:
         # a re-entry must follow a real dip, not a wiggle around our exit price
         self.min_dip_pct = float(g.get("min_dip_pct", 0.01))
 
+        # --- entry conditions (research/greedy_entry_edge.py, 2026-08-02) -----
+        # Buying whatever is most liquid is close to random with respect to
+        # whether the price will rise, and a rule with no entry edge can only
+        # lose to the round-trip cost floor. Measured over 41,382 notional round
+        # trips on the clean 97-item panel, grouping realized net return by
+        # features known AT ENTRY:
+        #   spread    tightest quintile -0.6% vs widest -0.9%, and monotone in
+        #             between: the cost floor is PER ITEM, so a tight book keeps
+        #             more of any given move. This one is arithmetic, not a
+        #             fitted pattern.
+        #   price     strongly monotone: <=Y119 +7.5% mean, >Y619 -7.3%. The
+        #             >Y350 control is negative in BOTH sample halves.
+        #   momentum  positive 21d return beats negative in every bucket.
+        #   depth     >=5 valid bids beats <=3.
+        # 0 / None disables a condition.
+        self.max_spread_pct = float(g.get("max_spread_pct", 0.0)) or None
+        self.max_price = float(g.get("max_price_cny", 0.0)) or None
+        self.min_valid_bids = int(g.get("min_valid_buy_orders", 0))
+        self.min_momentum_21d = g.get("min_momentum_21d", None)
+        self.min_momentum_21d = (float(self.min_momentum_21d)
+                                 if self.min_momentum_21d is not None else None)
+        self.rank_by = str(g.get("rank_by", "volume_avg_20"))
+        # crash course S1: "price above the middle band -> strong, can hold;
+        # below -> weak, do not touch, do not bottom-fish". Measured on the
+        # clean panel this is worth ~4 points of win rate (48.0% vs 43.9%), the
+        # single best-supported claim in the notes.
+        self.require_above_middle_band = bool(g.get("require_above_middle_band", False))
+
     # ---------------------------------------------------------------- helpers
     def _st(self, item: str) -> GreedyState:
         return self.state.setdefault(item, GreedyState())
@@ -402,9 +430,42 @@ class GreedyStrategy:
         if passing.empty:
             return []
 
-        # No structural score and no model here, so rank by tradeability: the
-        # most liquid item is the one whose ratchet can actually be executed.
-        passing = passing.sort_values("volume_avg_20", ascending=False)
+        # --- greedy entry conditions (see __post_init__ for the measurements) --
+        n_before = len(passing)
+        drops: dict[str, int] = {}
+
+        def _drop(mask: pd.Series, why: str) -> None:
+            nonlocal passing
+            kept = passing[mask]
+            n = len(passing) - len(kept)
+            if n:
+                drops[why] = drops.get(why, 0) + n
+            passing = kept
+
+        if self.max_spread_pct is not None and "spread_pct" in passing:
+            _drop(passing["spread_pct"] <= self.max_spread_pct, "spread_too_wide")
+        if self.max_price is not None and "price" in passing:
+            _drop(passing["price"] <= self.max_price, "price_too_high")
+        if self.min_valid_bids and "valid_buy_orders" in passing:
+            # -1 encodes "ladder not observed"; don't reject on missing data
+            vbo = passing["valid_buy_orders"]
+            _drop((vbo < 0) | (vbo >= self.min_valid_bids), "thin_bid_ladder")
+        if self.min_momentum_21d is not None and "ret_21d" in passing:
+            _drop(passing["ret_21d"] >= self.min_momentum_21d, "momentum_too_weak")
+        if self.require_above_middle_band and "middle_band_side" in passing:
+            _drop(passing["middle_band_side"] > 0, "below_middle_band")
+
+        stats["entry_screened"] = stats.get("entry_screened", 0) + (n_before - len(passing))
+        for why, n in drops.items():
+            stats[f"drop_{why}"] = stats.get(f"drop_{why}", 0) + n
+        if passing.empty:
+            return []
+
+        # Rank the survivors. Default is tradeability (the most liquid item is
+        # the one whose ratchet can actually be executed); `rank_by: ret_21d`
+        # ranks by momentum instead, which the entry study favours.
+        rank_col = self.rank_by if self.rank_by in passing else "volume_avg_20"
+        passing = passing.sort_values(rank_col, ascending=False)
 
         total_capital = float(cfg.get("capital", {}).get("total", equity))
         in_flight = max(1, int(cfg.get("execution", {}).get("order_ttl_days", 1)))

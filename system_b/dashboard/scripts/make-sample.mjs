@@ -13,8 +13,18 @@ import { fileURLToPath } from "node:url";
 
 const runDir = process.argv[2];
 const name = process.argv[3] ?? "sample backtest";
+// The destination used to be hardcoded to sample.json, which silently clobbered
+// the bundled positional run every time a second run was bundled.
+const outName = process.argv[4] ?? "sample.json";
 if (!runDir) {
-  console.error("usage: node scripts/make-sample.mjs <run-dir> [name]");
+  console.error(
+    "usage: node scripts/make-sample.mjs <run-dir> [name] [out-file]\n" +
+      "  out-file defaults to sample.json; pass sample_greedy.json for the greedy run",
+  );
+  process.exit(1);
+}
+if (!outName.endsWith(".json")) {
+  console.error(`out-file must end in .json (got ${outName})`);
   process.exit(1);
 }
 
@@ -103,7 +113,7 @@ const out = {
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
-const dest = join(here, "..", "src", "data", "sample.json");
+const dest = join(here, "..", "src", "data", outName);
 writeFileSync(dest, JSON.stringify(out));
 console.log(
   `wrote ${dest}: ${equity.length} equity pts, ${cycles.length} cycles, ${trades.length} trades, ${rankIc.length} IC pts`,

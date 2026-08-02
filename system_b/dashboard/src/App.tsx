@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import sampleJson from "./data/sample.json";
-import greedyJson from "./data/sample_greedy.json";
+import greedyJson from "./data/sample_greedy_tuned.json";
 import { BarChart } from "./components/BarChart";
 import { Blotter } from "./components/Blotter";
 import { LineChart } from "./components/LineChart";
@@ -13,9 +13,9 @@ import type { RunData } from "./types";
 
 /** Bundled runs, so the two strategies can be compared without loading files.
  * Drag & drop still overrides both. */
-const BUNDLED: RunData[] = [
-  sampleJson as unknown as RunData,
-  greedyJson as unknown as RunData,
+const BUNDLED: { label: string; run: RunData }[] = [
+  { label: "positional", run: sampleJson as unknown as RunData },
+  { label: "greedy", run: greedyJson as unknown as RunData },
 ];
 
 function useThemeToggle(): () => void {
@@ -31,7 +31,7 @@ export default function App() {
   // index, not identity: two bundled runs can share a name, and comparing by
   // name made every matching button render as active
   const [bundledIdx, setBundledIdx] = useState<number | null>(0);
-  const [run, setRun] = useState<RunData>(BUNDLED[0]);
+  const [run, setRun] = useState<RunData>(BUNDLED[0].run);
   const [drag, setDrag] = useState(false);
   const toggleTheme = useThemeToggle();
 
@@ -97,16 +97,16 @@ export default function App() {
         <span className="run-name">{run.name}</span>
         <span className="spacer" />
         <span className="run-picker">
-          {BUNDLED.map((r, i) => (
+          {BUNDLED.map((b, i) => (
             <button
-              key={i}
+              key={b.label}
               className={bundledIdx === i ? "active" : ""}
               onClick={() => {
                 setBundledIdx(i);
-                setRun(r);
+                setRun(b.run);
               }}
             >
-              {r.summary.strategy === "greedy" ? "greedy" : "positional"}
+              {b.label}
             </button>
           ))}
         </span>
