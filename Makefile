@@ -80,5 +80,9 @@ b-cost-floor:         ## measure the round-trip cost floor + exit realizations
 b-live:               ## one System B forward paper cycle on the live feed
 	cd "$(B)" && PYTHONPATH=src "$(PY)" -m system_b.live_paper
 
-b-dashboard:          ## React run-artifact dashboard (needs bun/npm)
-	cd "$(B)/dashboard" && bun install && bun run dev
+b-dashboard:          ## React run-artifact dashboard on localhost:5173
+	cd "$(B)/dashboard" && if command -v bun >/dev/null 2>&1; then \
+	  bun install && bun run dev; \
+	else \
+	  npm install --no-audit --no-fund && npm run dev; \
+	fi
